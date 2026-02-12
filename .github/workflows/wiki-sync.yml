@@ -1,0 +1,51 @@
+name: Wiki Sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - ".wiki/**"
+      - ".github/workflows/wiki-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate wiki source
+        run: |
+          set -euo pipefail
+          test -d .wiki
+          test -f .wiki/Home.md
+
+      - name: Sync .wiki to GitHub wiki repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          wiki_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          tmp_dir="$(mktemp -d)"
+
+          git clone "${wiki_url}" "${tmp_dir}"
+          rsync -a --delete --exclude ".git/" ".wiki/" "${tmp_dir}/"
+
+          cd "${tmp_dir}"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "Sync wiki from .wiki (run ${GITHUB_RUN_ID})"
+            git push
+          else
+            echo "No wiki changes to sync."
+          fi

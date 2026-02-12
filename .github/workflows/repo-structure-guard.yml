@@ -1,0 +1,17 @@
+name: Repo Structure Guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  validate-root-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate root layout
+        run: .github/scripts/validate-root-layout.sh

@@ -1,0 +1,34 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dumb-init for proper signal handling and curl for health checks
+RUN apk add --no-cache dumb-init curl
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install --only=production && npm cache clean --force
+
+# Copy application files
+COPY . .
+
+# Create non-root user
+RUN addgroup -g 1001 -S appuser && \
+    adduser -S appuser -u 1001
+
+# Change ownership
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# Use PORT from environment or template
+EXPOSE 5005
+
+# Health check using the correct port
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5005/health || exit 1
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "worker.js"]

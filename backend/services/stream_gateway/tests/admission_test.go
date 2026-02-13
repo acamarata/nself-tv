@@ -51,16 +51,16 @@ func newTestDeps(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *session.Manager, *tok
 }
 
 // ---------------------------------------------------------------------------
-// Tests for isRatingAllowed (via AdmitSession content rating checks)
+// Integration tests: admission controller with real Redis-backed session manager
 // ---------------------------------------------------------------------------
 
-func TestAdmitSession_UserActive_Allowed(t *testing.T) {
+func TestIntegration_AdmitSession_UserActive_Allowed(t *testing.T) {
 	db, mock, sessionMgr, tokenGen, mr, log := newTestDeps(t)
 	defer db.Close()
 	defer mr.Close()
 	defer sessionMgr.Close()
 
-	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2)
+	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2, 5*time.Minute)
 	ctx := context.Background()
 
 	// User exists and is NOT disabled.
@@ -97,13 +97,13 @@ func TestAdmitSession_UserActive_Allowed(t *testing.T) {
 	}
 }
 
-func TestAdmitSession_UserNotActive_Denied(t *testing.T) {
+func TestIntegration_AdmitSession_UserNotActive_Denied(t *testing.T) {
 	db, mock, sessionMgr, tokenGen, mr, log := newTestDeps(t)
 	defer db.Close()
 	defer mr.Close()
 	defer sessionMgr.Close()
 
-	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2)
+	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2, 5*time.Minute)
 	ctx := context.Background()
 
 	// User exists but IS disabled.
@@ -131,13 +131,13 @@ func TestAdmitSession_UserNotActive_Denied(t *testing.T) {
 	}
 }
 
-func TestAdmitSession_UserNotFound_Denied(t *testing.T) {
+func TestIntegration_AdmitSession_UserNotFound_Denied(t *testing.T) {
 	db, mock, sessionMgr, tokenGen, mr, log := newTestDeps(t)
 	defer db.Close()
 	defer mr.Close()
 	defer sessionMgr.Close()
 
-	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2)
+	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2, 5*time.Minute)
 	ctx := context.Background()
 
 	// User does NOT exist (sql.ErrNoRows).
@@ -161,13 +161,13 @@ func TestAdmitSession_UserNotFound_Denied(t *testing.T) {
 	}
 }
 
-func TestAdmitSession_DBError_ReturnsError(t *testing.T) {
+func TestIntegration_AdmitSession_DBError_ReturnsError(t *testing.T) {
 	db, mock, sessionMgr, tokenGen, mr, log := newTestDeps(t)
 	defer db.Close()
 	defer mr.Close()
 	defer sessionMgr.Close()
 
-	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2)
+	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2, 5*time.Minute)
 	ctx := context.Background()
 
 	// Simulate a database connection error.
@@ -193,14 +193,14 @@ func TestAdmitSession_DBError_ReturnsError(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Content rating policy enforcement
+// Content rating policy enforcement (integration)
 // ---------------------------------------------------------------------------
 
-func TestAdmitSession_ContentRating_Allowed(t *testing.T) {
+func TestIntegration_AdmitSession_ContentRating_Allowed(t *testing.T) {
 	tests := []struct {
-		name           string
-		contentRating  string
-		profileLimit   string
+		name            string
+		contentRating   string
+		profileLimit    string
 		shouldBeAllowed bool
 	}{
 		{"G content with PG-13 limit", "G", "PG-13", true},
@@ -226,7 +226,7 @@ func TestAdmitSession_ContentRating_Allowed(t *testing.T) {
 			defer mr.Close()
 			defer sessionMgr.Close()
 
-			ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2)
+			ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 2, 5*time.Minute)
 			ctx := context.Background()
 
 			// User is always active for these tests.
@@ -256,8 +256,8 @@ func TestAdmitSession_ContentRating_Allowed(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected admission to be denied, got nil error")
 				}
-				if !errors.Is(err, admission.ErrPolicyViolation) {
-					t.Errorf("expected ErrPolicyViolation, got: %v", err)
+				if !errors.Is(err, admission.ErrPolicyDenied) {
+					t.Errorf("expected ErrPolicyDenied, got: %v", err)
 				}
 			}
 		})
@@ -265,24 +265,23 @@ func TestAdmitSession_ContentRating_Allowed(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Family concurrency limit (10 streams max)
+// Family concurrency limit (integration with real Redis)
 // ---------------------------------------------------------------------------
 
-func TestAdmitSession_FamilyConcurrencyLimit(t *testing.T) {
+func TestIntegration_AdmitSession_FamilyConcurrencyLimit(t *testing.T) {
 	db, mock, sessionMgr, tokenGen, mr, log := newTestDeps(t)
 	defer db.Close()
 	defer mr.Close()
 	defer sessionMgr.Close()
 
-	maxFamily := 10
-	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, maxFamily, 2)
+	maxFamily := 5
+	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, maxFamily, 2, 5*time.Minute)
 	ctx := context.Background()
 
 	familyID := "family-concurrency"
 
 	// Create maxFamily sessions to fill the limit.
 	for i := 0; i < maxFamily; i++ {
-		// Each admission query checks user is active.
 		mock.ExpectQuery(`SELECT disabled FROM auth.users WHERE id = \$1`).
 			WithArgs(fmt.Sprintf("user-%d", i)).
 			WillReturnRows(sqlmock.NewRows([]string{"disabled"}).AddRow(false))
@@ -300,7 +299,7 @@ func TestAdmitSession_FamilyConcurrencyLimit(t *testing.T) {
 		}
 	}
 
-	// The 11th session should be denied.
+	// The next session should be denied.
 	mock.ExpectQuery(`SELECT disabled FROM auth.users WHERE id = \$1`).
 		WithArgs("user-overflow").
 		WillReturnRows(sqlmock.NewRows([]string{"disabled"}).AddRow(false))
@@ -322,17 +321,17 @@ func TestAdmitSession_FamilyConcurrencyLimit(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Device concurrency limit (2 streams max)
+// Device concurrency limit (integration with real Redis)
 // ---------------------------------------------------------------------------
 
-func TestAdmitSession_DeviceConcurrencyLimit(t *testing.T) {
+func TestIntegration_AdmitSession_DeviceConcurrencyLimit(t *testing.T) {
 	db, mock, sessionMgr, tokenGen, mr, log := newTestDeps(t)
 	defer db.Close()
 	defer mr.Close()
 	defer sessionMgr.Close()
 
 	maxDevice := 2
-	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, maxDevice)
+	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, maxDevice, 5*time.Minute)
 	ctx := context.Background()
 
 	deviceID := "device-concurrency"
@@ -370,10 +369,10 @@ func TestAdmitSession_DeviceConcurrencyLimit(t *testing.T) {
 
 	_, err := ctrl.AdmitSession(ctx, req)
 	if err == nil {
-		t.Fatal("expected device concurrency limit error, got nil")
+		t.Fatal("expected device limit error, got nil")
 	}
-	if !errors.Is(err, admission.ErrConcurrencyLimit) {
-		t.Errorf("expected ErrConcurrencyLimit, got: %v", err)
+	if !errors.Is(err, admission.ErrDeviceLimit) {
+		t.Errorf("expected ErrDeviceLimit, got: %v", err)
 	}
 }
 
@@ -382,14 +381,17 @@ func TestAdmitSession_DeviceConcurrencyLimit(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSentinelErrors_AreDistinct(t *testing.T) {
-	if errors.Is(admission.ErrUnauthorized, admission.ErrPolicyViolation) {
-		t.Error("ErrUnauthorized and ErrPolicyViolation should be distinct")
+	if errors.Is(admission.ErrUnauthorized, admission.ErrPolicyDenied) {
+		t.Error("ErrUnauthorized and ErrPolicyDenied should be distinct")
 	}
 	if errors.Is(admission.ErrUnauthorized, admission.ErrConcurrencyLimit) {
 		t.Error("ErrUnauthorized and ErrConcurrencyLimit should be distinct")
 	}
-	if errors.Is(admission.ErrPolicyViolation, admission.ErrConcurrencyLimit) {
-		t.Error("ErrPolicyViolation and ErrConcurrencyLimit should be distinct")
+	if errors.Is(admission.ErrUnauthorized, admission.ErrDeviceLimit) {
+		t.Error("ErrUnauthorized and ErrDeviceLimit should be distinct")
+	}
+	if errors.Is(admission.ErrPolicyDenied, admission.ErrConcurrencyLimit) {
+		t.Error("ErrPolicyDenied and ErrConcurrencyLimit should be distinct")
 	}
 }
 
@@ -399,29 +401,34 @@ func TestSentinelErrors_WrappedErrorsStillMatch(t *testing.T) {
 		t.Error("wrapped ErrUnauthorized should still be identifiable with errors.Is")
 	}
 
-	wrappedPolicy := fmt.Errorf("%w: content rating R exceeds limit PG", admission.ErrPolicyViolation)
-	if !errors.Is(wrappedPolicy, admission.ErrPolicyViolation) {
-		t.Error("wrapped ErrPolicyViolation should still be identifiable with errors.Is")
+	wrappedPolicy := fmt.Errorf("%w: content rating R exceeds limit PG", admission.ErrPolicyDenied)
+	if !errors.Is(wrappedPolicy, admission.ErrPolicyDenied) {
+		t.Error("wrapped ErrPolicyDenied should still be identifiable with errors.Is")
 	}
 
-	wrappedLimit := fmt.Errorf("%w: family has 10 active streams", admission.ErrConcurrencyLimit)
+	wrappedLimit := fmt.Errorf("%w: family has 5 active streams", admission.ErrConcurrencyLimit)
 	if !errors.Is(wrappedLimit, admission.ErrConcurrencyLimit) {
 		t.Error("wrapped ErrConcurrencyLimit should still be identifiable with errors.Is")
+	}
+
+	wrappedDevice := fmt.Errorf("%w: device has 2 active streams", admission.ErrDeviceLimit)
+	if !errors.Is(wrappedDevice, admission.ErrDeviceLimit) {
+		t.Error("wrapped ErrDeviceLimit should still be identifiable with errors.Is")
 	}
 }
 
 // ---------------------------------------------------------------------------
-// Admission succeeds even when session is released before re-check
+// Admission succeeds after session is released
 // ---------------------------------------------------------------------------
 
-func TestAdmitSession_AfterEndSession_AllowsNew(t *testing.T) {
+func TestIntegration_AdmitSession_AfterEndSession_AllowsNew(t *testing.T) {
 	db, mock, sessionMgr, tokenGen, mr, log := newTestDeps(t)
 	defer db.Close()
 	defer mr.Close()
 	defer sessionMgr.Close()
 
 	// Device limit of 1 to make this clear.
-	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 1)
+	ctrl := admission.NewController(db, sessionMgr, tokenGen, log, 10, 1, 5*time.Minute)
 	ctx := context.Background()
 
 	// First session admitted.

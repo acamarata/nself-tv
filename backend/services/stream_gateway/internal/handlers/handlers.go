@@ -17,14 +17,22 @@ import (
 type Handler struct {
 	Admission  *admission.Controller
 	SessionMgr *session.Manager
+	Tracker    *session.ConcurrencyTracker
 	Log        *logrus.Logger
+	AdminKey   string // Required secret for admin endpoints
 }
 
 // NewHandler creates a new Handler with the given dependencies.
-func NewHandler(ctrl *admission.Controller, sessionMgr *session.Manager, log *logrus.Logger) *Handler {
+func NewHandler(
+	ctrl *admission.Controller,
+	sessionMgr *session.Manager,
+	tracker *session.ConcurrencyTracker,
+	log *logrus.Logger,
+) *Handler {
 	return &Handler{
 		Admission:  ctrl,
 		SessionMgr: sessionMgr,
+		Tracker:    tracker,
 		Log:        log,
 	}
 }
@@ -39,6 +47,13 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 		api.POST("/heartbeat/:sessionId", h.Heartbeat)
 		api.DELETE("/session/:sessionId", h.EndSession)
 		api.GET("/sessions/:familyId", h.ListFamilySessions)
+	}
+
+	// New stream session routes (Phase 4 Task 4).
+	stream := r.Group("/api/stream")
+	{
+		stream.POST("/sessions/:id/heartbeat", h.StreamHeartbeat)
+		stream.GET("/sessions", h.ListActiveSessions)
 	}
 }
 
@@ -87,6 +102,19 @@ func (h *Handler) Admit(c *gin.Context) {
 		return
 	}
 
+	// Register with concurrency tracker if available.
+	if h.Tracker != nil {
+		sess := &admission.StreamSession{
+			ID:        resp.SessionID,
+			UserID:    req.UserID,
+			MediaID:   req.MediaID,
+			DeviceID:  req.DeviceID,
+			FamilyID:  req.FamilyID,
+			ExpiresAt: resp.ExpiresAt,
+		}
+		_ = h.Tracker.RegisterSession(c.Request.Context(), sess)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": resp,
 	})
@@ -111,6 +139,11 @@ func (h *Handler) Heartbeat(c *gin.Context) {
 			"message": fmt.Sprintf("Session %s not found or expired", sessionID),
 		})
 		return
+	}
+
+	// Also update concurrency tracker.
+	if h.Tracker != nil {
+		_ = h.Tracker.RecordHeartbeat(c.Request.Context(), sessionID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -139,6 +172,11 @@ func (h *Handler) EndSession(c *gin.Context) {
 			"message": "Failed to end session",
 		})
 		return
+	}
+
+	// Also unregister from concurrency tracker.
+	if h.Tracker != nil {
+		_ = h.Tracker.UnregisterSession(c.Request.Context(), sessionID)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -185,9 +223,14 @@ func (h *Handler) handleAdmissionError(c *gin.Context, err error) {
 			"error":   "unauthorized",
 			"message": err.Error(),
 		})
-	case errors.Is(err, admission.ErrPolicyViolation):
+	case errors.Is(err, admission.ErrPolicyDenied):
 		c.JSON(http.StatusForbidden, gin.H{
-			"error":   "policy_violation",
+			"error":   "policy_denied",
+			"message": err.Error(),
+		})
+	case errors.Is(err, admission.ErrDeviceLimit):
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":   "device_limit",
 			"message": err.Error(),
 		})
 	case errors.Is(err, admission.ErrConcurrencyLimit):

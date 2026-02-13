@@ -6,21 +6,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	"stream_gateway/internal/admission"
+
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 )
 
-// StreamSession represents an active playback session stored in Redis.
-type StreamSession struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"userId"`
-	MediaID   string    `json:"mediaId"`
-	DeviceID  string    `json:"deviceId"`
-	FamilyID  string    `json:"familyId"`
-	CreatedAt time.Time `json:"createdAt"`
-	ExpiresAt time.Time `json:"expiresAt"`
-}
+// StreamSession is an alias for admission.StreamSession for backward compatibility.
+type StreamSession = admission.StreamSession
 
 // Redis key prefixes for session storage.
 const (
@@ -30,11 +24,15 @@ const (
 )
 
 // Manager handles stream session lifecycle in Redis.
+// It implements admission.SessionProvider.
 type Manager struct {
 	client     *redis.Client
 	log        *logrus.Logger
 	sessionTTL time.Duration
 }
+
+// Compile-time check that Manager implements SessionProvider.
+var _ admission.SessionProvider = (*Manager)(nil)
 
 // NewManager creates a new session manager from a Redis URL.
 func NewManager(redisURL string, sessionTTL time.Duration, log *logrus.Logger) (*Manager, error) {
@@ -64,11 +62,11 @@ func NewManager(redisURL string, sessionTTL time.Duration, log *logrus.Logger) (
 //   - session:<id> -> session JSON (with TTL)
 //   - family:<familyId> -> set of session IDs
 //   - device:<deviceId> -> set of session IDs
-func (m *Manager) CreateSession(ctx context.Context, userID, mediaID, deviceID, familyID string) (*StreamSession, error) {
+func (m *Manager) CreateSession(ctx context.Context, userID, mediaID, deviceID, familyID string) (*admission.StreamSession, error) {
 	sessionID := uuid.New().String()
 	now := time.Now().UTC()
 
-	sess := &StreamSession{
+	sess := &admission.StreamSession{
 		ID:        sessionID,
 		UserID:    userID,
 		MediaID:   mediaID,
@@ -134,7 +132,7 @@ func (m *Manager) RecordHeartbeat(ctx context.Context, sessionID string) error {
 		return fmt.Errorf("reading session data: %w", err)
 	}
 
-	var sess StreamSession
+	var sess admission.StreamSession
 	if err := json.Unmarshal(data, &sess); err != nil {
 		return fmt.Errorf("unmarshaling session: %w", err)
 	}
@@ -180,7 +178,7 @@ func (m *Manager) EndSession(ctx context.Context, sessionID string) error {
 		return fmt.Errorf("reading session for cleanup: %w", err)
 	}
 
-	var sess StreamSession
+	var sess admission.StreamSession
 	if err := json.Unmarshal(data, &sess); err != nil {
 		return fmt.Errorf("unmarshaling session for cleanup: %w", err)
 	}
@@ -199,9 +197,29 @@ func (m *Manager) EndSession(ctx context.Context, sessionID string) error {
 	return nil
 }
 
+// GetFamilyStreamCount returns the number of active streams for a family.
+// It validates each session ID still exists (TTL-expired sessions are pruned).
+func (m *Manager) GetFamilyStreamCount(ctx context.Context, familyID string) (int, error) {
+	sessions, err := m.GetActiveSessions(ctx, familyID)
+	if err != nil {
+		return 0, err
+	}
+	return len(sessions), nil
+}
+
+// GetDeviceStreamCount returns the number of active streams for a device.
+// It validates each session ID still exists (TTL-expired sessions are pruned).
+func (m *Manager) GetDeviceStreamCount(ctx context.Context, deviceID string) (int, error) {
+	sessions, err := m.GetDeviceSessions(ctx, deviceID)
+	if err != nil {
+		return 0, err
+	}
+	return len(sessions), nil
+}
+
 // GetActiveSessions returns all active sessions for a family.
 // It validates each session ID still exists (TTL-expired sessions are pruned).
-func (m *Manager) GetActiveSessions(ctx context.Context, familyID string) ([]StreamSession, error) {
+func (m *Manager) GetActiveSessions(ctx context.Context, familyID string) ([]admission.StreamSession, error) {
 	familyKey := keyPrefixFamily + familyID
 
 	sessionIDs, err := m.client.SMembers(ctx, familyKey).Result()
@@ -214,7 +232,7 @@ func (m *Manager) GetActiveSessions(ctx context.Context, familyID string) ([]Str
 
 // GetDeviceSessions returns all active sessions for a device.
 // It validates each session ID still exists (TTL-expired sessions are pruned).
-func (m *Manager) GetDeviceSessions(ctx context.Context, deviceID string) ([]StreamSession, error) {
+func (m *Manager) GetDeviceSessions(ctx context.Context, deviceID string) ([]admission.StreamSession, error) {
 	deviceKey := keyPrefixDevice + deviceID
 
 	sessionIDs, err := m.client.SMembers(ctx, deviceKey).Result()
@@ -226,8 +244,8 @@ func (m *Manager) GetDeviceSessions(ctx context.Context, deviceID string) ([]Str
 }
 
 // loadAndPruneSessions loads sessions by ID, removing stale entries from the set.
-func (m *Manager) loadAndPruneSessions(ctx context.Context, sessionIDs []string, setKey string) ([]StreamSession, error) {
-	var sessions []StreamSession
+func (m *Manager) loadAndPruneSessions(ctx context.Context, sessionIDs []string, setKey string) ([]admission.StreamSession, error) {
+	var sessions []admission.StreamSession
 
 	for _, id := range sessionIDs {
 		data, err := m.client.Get(ctx, keyPrefixSession+id).Bytes()
@@ -241,7 +259,7 @@ func (m *Manager) loadAndPruneSessions(ctx context.Context, sessionIDs []string,
 			continue
 		}
 
-		var sess StreamSession
+		var sess admission.StreamSession
 		if err := json.Unmarshal(data, &sess); err != nil {
 			m.log.WithError(err).WithField("session_id", id).Warn("failed to unmarshal session")
 			continue

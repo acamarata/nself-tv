@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"stream_gateway/internal/session"
+	"stream_gateway/internal/admission"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -19,10 +19,14 @@ type PlaybackClaims struct {
 }
 
 // Generator creates signed playback tokens.
+// It implements admission.TokenProvider.
 type Generator struct {
 	secret    []byte
 	expiresIn time.Duration
 }
+
+// Compile-time check that Generator implements TokenProvider.
+var _ admission.TokenProvider = (*Generator)(nil)
 
 // NewGenerator creates a token generator with the given HMAC secret and expiry duration.
 func NewGenerator(secret string, expiresIn time.Duration) *Generator {
@@ -34,7 +38,7 @@ func NewGenerator(secret string, expiresIn time.Duration) *Generator {
 
 // GeneratePlaybackToken creates a signed JWT for the given stream session.
 // Returns the token string, its expiration time, and any error.
-func (g *Generator) GeneratePlaybackToken(sess *session.StreamSession) (string, time.Time, error) {
+func (g *Generator) GeneratePlaybackToken(sess *admission.StreamSession) (string, time.Time, error) {
 	if sess == nil {
 		return "", time.Time{}, fmt.Errorf("session is nil")
 	}
@@ -82,4 +86,9 @@ func (g *Generator) ValidatePlaybackToken(tokenString string) (*PlaybackClaims, 
 	}
 
 	return claims, nil
+}
+
+// Secret returns the raw HMAC secret bytes. Used by the URL signer.
+func (g *Generator) Secret() []byte {
+	return g.secret
 }

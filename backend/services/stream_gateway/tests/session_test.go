@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"stream_gateway/internal/admission"
 	"stream_gateway/internal/session"
 
 	"github.com/alicebob/miniredis/v2"
@@ -67,7 +68,7 @@ func TestCreateSession_StoresSessionKey(t *testing.T) {
 		t.Fatalf("failed to get session data: %v", err)
 	}
 
-	var stored session.StreamSession
+	var stored admission.StreamSession
 	if err := json.Unmarshal([]byte(data), &stored); err != nil {
 		t.Fatalf("failed to unmarshal session data: %v", err)
 	}
@@ -309,7 +310,7 @@ func TestRecordHeartbeat_UpdatesExpiresAtField(t *testing.T) {
 		t.Fatalf("failed to get session data: %v", err)
 	}
 
-	var updated session.StreamSession
+	var updated admission.StreamSession
 	if err := json.Unmarshal([]byte(data), &updated); err != nil {
 		t.Fatalf("failed to unmarshal session: %v", err)
 	}
@@ -571,28 +572,17 @@ func TestGetActiveSessions_ReturnsAllFamilySessions(t *testing.T) {
 }
 
 func TestGetActiveSessions_PrunesExpiredSessions(t *testing.T) {
-	ttl := 5 * time.Minute
-	mgr, mr := newTestSessionManager(t, ttl)
+	mgr, mr := newTestSessionManager(t, 5*time.Minute)
 	defer mr.Close()
 	defer mgr.Close()
 
 	ctx := context.Background()
 
-	// Create a session.
+	// Create two sessions.
 	mgr.CreateSession(ctx, "user-1", "media-1", "device-1", "family-prune")
-
-	// Create a second session.
 	sess2, _ := mgr.CreateSession(ctx, "user-2", "media-2", "device-2", "family-prune")
 
-	// Expire only the first session by deleting its key directly.
-	mr.Del("stream:session:" + "should-not-exist") // Dummy to show we delete specific keys.
-
-	// Instead, let's fast-forward so the first session's key expires,
-	// but refresh the second session first so it survives.
-	// Actually, we cannot selectively expire in miniredis easily,
-	// so let's manually delete the first session's key to simulate expiration.
-
-	// First, get all sessions to find the first one's ID.
+	// Get all sessions to find the first one's ID.
 	allSessions, _ := mgr.GetActiveSessions(ctx, "family-prune")
 	if len(allSessions) != 2 {
 		t.Fatalf("expected 2 sessions, got %d", len(allSessions))
@@ -723,6 +713,48 @@ func TestGetDeviceSessions_EmptyDevice_ReturnsEmpty(t *testing.T) {
 
 	if len(sessions) != 0 {
 		t.Errorf("expected 0 sessions for nonexistent device, got %d", len(sessions))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetFamilyStreamCount / GetDeviceStreamCount
+// ---------------------------------------------------------------------------
+
+func TestGetFamilyStreamCount(t *testing.T) {
+	mgr, mr := newTestSessionManager(t, 5*time.Minute)
+	defer mr.Close()
+	defer mgr.Close()
+
+	ctx := context.Background()
+
+	mgr.CreateSession(ctx, "user-1", "media-1", "device-1", "family-count")
+	mgr.CreateSession(ctx, "user-2", "media-2", "device-2", "family-count")
+
+	count, err := mgr.GetFamilyStreamCount(ctx, "family-count")
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2, got %d", count)
+	}
+}
+
+func TestGetDeviceStreamCount(t *testing.T) {
+	mgr, mr := newTestSessionManager(t, 5*time.Minute)
+	defer mr.Close()
+	defer mgr.Close()
+
+	ctx := context.Background()
+
+	mgr.CreateSession(ctx, "user-1", "media-1", "device-count", "family-1")
+	mgr.CreateSession(ctx, "user-2", "media-2", "device-count", "family-2")
+
+	count, err := mgr.GetDeviceStreamCount(ctx, "device-count")
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("expected 2, got %d", count)
 	}
 }
 

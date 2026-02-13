@@ -74,10 +74,14 @@ func main() {
 	// Create token generator.
 	tokenGen := token.NewGenerator(cfg.JWTSecret, cfg.TokenExpiry)
 
+	// Create in-memory concurrency tracker.
+	tracker := session.NewConcurrencyTracker(cfg.SessionTTL)
+
 	// Create admission controller.
 	admissionCtrl := admission.NewController(
 		db, sessionMgr, tokenGen, log,
 		cfg.MaxFamilyStreams, cfg.MaxDeviceStreams,
+		cfg.SessionTTL,
 	)
 
 	// Set Gin mode.
@@ -92,8 +96,26 @@ func main() {
 	router.Use(requestLogger(log))
 
 	// Register routes.
-	h := handlers.NewHandler(admissionCtrl, sessionMgr, log)
+	h := handlers.NewHandler(admissionCtrl, sessionMgr, tracker, log)
 	h.RegisterRoutes(router)
+
+	// Start periodic cleanup of expired sessions in the concurrency tracker.
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := tracker.CleanupExpired(cleanupCtx); err != nil {
+					log.WithError(err).Warn("concurrency tracker cleanup failed")
+				}
+			case <-cleanupCtx.Done():
+				return
+			}
+		}
+	}()
 
 	// Start HTTP server with graceful shutdown.
 	srv := &http.Server{

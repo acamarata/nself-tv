@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"stream_gateway/internal/session"
+	"stream_gateway/internal/admission"
 	"stream_gateway/internal/token"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -19,7 +19,7 @@ func TestGeneratePlaybackToken_ContainsCorrectClaims(t *testing.T) {
 	expiry := 4 * time.Hour
 	gen := token.NewGenerator(secret, expiry)
 
-	sess := &session.StreamSession{
+	sess := &admission.StreamSession{
 		ID:       "session-abc-123",
 		UserID:   "user-42",
 		MediaID:  "media-99",
@@ -102,7 +102,7 @@ func TestGeneratePlaybackToken_ContainsCorrectClaims(t *testing.T) {
 func TestGeneratePlaybackToken_UsesHS256(t *testing.T) {
 	gen := token.NewGenerator("hs256-test-secret", 1*time.Hour)
 
-	sess := &session.StreamSession{
+	sess := &admission.StreamSession{
 		ID:       "sess-1",
 		UserID:   "user-1",
 		MediaID:  "media-1",
@@ -139,7 +139,7 @@ func TestGeneratePlaybackToken_ExpiresAfterConfiguredDuration(t *testing.T) {
 	shortExpiry := 1 * time.Second
 	gen := token.NewGenerator("expiry-test-secret", shortExpiry)
 
-	sess := &session.StreamSession{
+	sess := &admission.StreamSession{
 		ID:       "sess-exp",
 		UserID:   "user-exp",
 		MediaID:  "media-exp",
@@ -189,7 +189,7 @@ func TestGeneratePlaybackToken_DifferentExpiries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gen := token.NewGenerator("multi-expiry-secret", tt.expiry)
 
-			sess := &session.StreamSession{
+			sess := &admission.StreamSession{
 				ID:       "sess-1",
 				UserID:   "user-1",
 				MediaID:  "media-1",
@@ -220,7 +220,7 @@ func TestValidatePlaybackToken_WrongSecret_Fails(t *testing.T) {
 	genA := token.NewGenerator("secret-A", 4*time.Hour)
 	genB := token.NewGenerator("secret-B", 4*time.Hour)
 
-	sess := &session.StreamSession{
+	sess := &admission.StreamSession{
 		ID:       "sess-1",
 		UserID:   "user-1",
 		MediaID:  "media-1",
@@ -244,7 +244,7 @@ func TestValidatePlaybackToken_WrongSecret_Fails(t *testing.T) {
 func TestValidatePlaybackToken_TamperedToken_Fails(t *testing.T) {
 	gen := token.NewGenerator("tamper-test-secret", 4*time.Hour)
 
-	sess := &session.StreamSession{
+	sess := &admission.StreamSession{
 		ID:       "sess-1",
 		UserID:   "user-1",
 		MediaID:  "media-1",
@@ -257,8 +257,7 @@ func TestValidatePlaybackToken_TamperedToken_Fails(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Tamper with the token by replacing the entire signature portion with garbage.
-	// JWT format: header.payload.signature
+	// Tamper with the token by replacing the signature portion.
 	parts := splitJWT(tokenStr)
 	if len(parts) != 3 {
 		t.Fatalf("expected 3 JWT parts, got %d", len(parts))
@@ -324,7 +323,7 @@ func TestGeneratePlaybackToken_UniquePerCall(t *testing.T) {
 	gen := token.NewGenerator("unique-test-secret", 4*time.Hour)
 
 	// Use two different sessions (different session IDs) to guarantee distinct tokens.
-	sess1 := &session.StreamSession{
+	sess1 := &admission.StreamSession{
 		ID:       "sess-1",
 		UserID:   "user-1",
 		MediaID:  "media-1",
@@ -332,7 +331,7 @@ func TestGeneratePlaybackToken_UniquePerCall(t *testing.T) {
 		FamilyID: "fam-1",
 	}
 
-	sess2 := &session.StreamSession{
+	sess2 := &admission.StreamSession{
 		ID:       "sess-2",
 		UserID:   "user-1",
 		MediaID:  "media-1",
@@ -350,8 +349,45 @@ func TestGeneratePlaybackToken_UniquePerCall(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Tokens should be different because session IDs differ (different sessionId claim).
+	// Tokens should be different because session IDs differ.
 	if token1 == token2 {
 		t.Error("tokens for different sessions should be different")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// URL Signer integration tests
+// ---------------------------------------------------------------------------
+
+func TestURLSigner_Roundtrip(t *testing.T) {
+	signer := token.NewSigner("integration-test-secret")
+
+	url, err := signer.SignMediaURL("media-abc", "session-xyz", 4*time.Hour)
+	if err != nil {
+		t.Fatalf("SignMediaURL error: %v", err)
+	}
+
+	sessionID, err := signer.ValidateSignedURL(url)
+	if err != nil {
+		t.Fatalf("ValidateSignedURL error: %v", err)
+	}
+
+	if sessionID != "session-xyz" {
+		t.Errorf("expected session-xyz, got %q", sessionID)
+	}
+}
+
+func TestURLSigner_WrongSecret_Fails(t *testing.T) {
+	signerA := token.NewSigner("secret-A")
+	signerB := token.NewSigner("secret-B")
+
+	url, err := signerA.SignMediaURL("media-123", "session-abc", 4*time.Hour)
+	if err != nil {
+		t.Fatalf("SignMediaURL error: %v", err)
+	}
+
+	_, err = signerB.ValidateSignedURL(url)
+	if err == nil {
+		t.Error("expected validation to fail with wrong secret, got nil")
 	}
 }

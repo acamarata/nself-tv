@@ -29,6 +29,8 @@ coverage/
 .tmp/
 tmp/
 out/
+.next/
+pnpm-lock.yaml
 
 # Python
 __pycache__/

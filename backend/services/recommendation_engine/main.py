@@ -1,143 +1,228 @@
+"""Recommendation engine entry-point.
+
+Configures the FastAPI application, background model-rebuild task, and
+lifecycle hooks (startup / shutdown).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
 import os
 import time
-from datetime import datetime
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Any, Dict
+
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 
-# Initialize FastAPI app
+from src.api.routes import router as recommendation_router, set_recommender
+from src.cache import close_client as close_redis
+from src.config import config
+from src.database import check_health as db_healthy, close_pool as close_db
+from src.cache import check_health as redis_healthy
+from src.models.hybrid import HybridRecommender
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    level=getattr(logging, config.log_level.upper(), logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("recommendation_engine")
+
+# ---------------------------------------------------------------------------
+# Globals
+# ---------------------------------------------------------------------------
+
+recommender = HybridRecommender()
+_rebuild_task: asyncio.Task | None = None
+_start_time: float = time.time()
+
+
+# ---------------------------------------------------------------------------
+# Background tasks
+# ---------------------------------------------------------------------------
+
+async def _periodic_rebuild() -> None:
+    """Rebuild models on a fixed interval in the background."""
+    interval = config.model_rebuild_interval_seconds
+    while True:
+        try:
+            logger.info("Starting periodic model rebuild")
+            # Run the CPU-bound rebuild in a thread so we don't block the
+            # event loop.
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, recommender.rebuild_models)
+            logger.info("Periodic model rebuild complete")
+        except Exception:
+            logger.exception("Periodic model rebuild failed; will retry next cycle")
+        await asyncio.sleep(interval)
+
+
+# ---------------------------------------------------------------------------
+# Lifespan (startup + shutdown)
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler: startup and shutdown hooks."""
+    global _rebuild_task
+
+    # --- Startup ---
+    logger.info("Recommendation engine starting on port %d", config.server_port)
+
+    # Wire the recommender into the API routes.
+    set_recommender(recommender)
+
+    # Initial model build (run in executor so startup isn't blocked).
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, recommender.rebuild_models)
+        logger.info("Initial model build complete")
+    except Exception:
+        logger.exception(
+            "Initial model build failed; engine will run with empty models "
+            "until the next periodic rebuild"
+        )
+
+    # Launch background rebuild loop.
+    _rebuild_task = asyncio.create_task(_periodic_rebuild())
+
+    yield
+
+    # --- Shutdown ---
+    logger.info("Recommendation engine shutting down")
+    if _rebuild_task is not None:
+        _rebuild_task.cancel()
+        try:
+            await _rebuild_task
+        except asyncio.CancelledError:
+            pass
+
+    close_redis()
+    close_db()
+    logger.info("Cleanup complete")
+
+
+# ---------------------------------------------------------------------------
+# FastAPI application
+# ---------------------------------------------------------------------------
+
 app = FastAPI(
-    title="recommendation_engine",
-    description="FastAPI service for nself-tv",
-    version="1.0.0"
+    title="nself-tv Recommendation Engine",
+    description=(
+        "ML-based content recommendation service using hybrid "
+        "collaborative + content-based filtering."
+    ),
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-def get_cors_origins():
-    """Get CORS origins based on environment."""
-    cors_origin = os.getenv('CORS_ORIGIN')
-    if cors_origin:
-        return cors_origin.split(',')
 
-    env = os.getenv('ENV', 'development')
-    base_domain = os.getenv('BASE_DOMAIN', 'localhost')
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
 
-    if env == 'production':
-        return [f"https://{base_domain}", f"https://*.{base_domain}"]
-    elif env == 'staging':
-        return [f"https://{base_domain}", f"https://*.{base_domain}", "http://localhost:3000"]
+def _get_cors_origins() -> list[str]:
+    """Compute allowed CORS origins from environment."""
+    if config.cors_origin:
+        return [o.strip() for o in config.cors_origin.split(",")]
+
+    env = config.environment
+    base = config.base_domain
+
+    if env == "production":
+        return [f"https://{base}", f"https://*.{base}"]
+    elif env == "staging":
+        return [f"https://{base}", f"https://*.{base}", "http://localhost:3000"]
     else:
-        return ["http://localhost:3000", "http://localhost:3001", f"http://*.local.{base_domain}"]
+        return [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            f"http://*.local.{base}",
+        ]
 
-# CORS middleware with environment-aware origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_cors_origins(),
+    allow_origins=_get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Trusted host middleware (security)
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["*"]  # Configure appropriately for production
-)
 
-# Pydantic models
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+app.include_router(recommendation_router)
+
+
 class HealthResponse(BaseModel):
     status: str
     service: str
     timestamp: str
+    uptime_seconds: float
+    dependencies: Dict[str, str]
 
-class InfoResponse(BaseModel):
-    service: str
-    environment: str
-    domain: str
-    uptime: float
 
-class EchoRequest(BaseModel):
-    message: str
-    data: Dict[str, Any] = {}
+@app.get("/health", response_model=HealthResponse, tags=["health"])
+async def health_check() -> HealthResponse:
+    """Top-level health endpoint checked by Docker HEALTHCHECK."""
+    db_ok = False
+    redis_ok = False
+    try:
+        db_ok = db_healthy()
+    except Exception:
+        pass
+    try:
+        redis_ok = redis_healthy()
+    except Exception:
+        pass
 
-class EchoResponse(BaseModel):
-    received: EchoRequest
-    timestamp: str
+    overall = "healthy" if db_ok else "degraded"
 
-# Store start time for uptime calculation
-start_time = time.time()
-
-@app.get("/health", response_model=HealthResponse)
-async def health_check():
-    """Health check endpoint"""
     return HealthResponse(
-        status="healthy",
+        status=overall,
         service="recommendation_engine",
-        timestamp=datetime.utcnow().isoformat()
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        uptime_seconds=round(time.time() - _start_time, 1),
+        dependencies={
+            "postgresql": "up" if db_ok else "down",
+            "redis": "up" if redis_ok else "down",
+        },
     )
 
-@app.get("/", response_model=Dict[str, Any])
-async def root():
-    """Root endpoint"""
+
+@app.get("/", tags=["root"])
+async def root() -> Dict[str, Any]:
+    """Service identification endpoint."""
     return {
-        "message": "Hello from recommendation_engine!",
+        "service": "recommendation_engine",
         "project": "nself-tv",
-        "framework": "FastAPI",
-        "version": "0.104.1"
+        "version": "1.0.0",
+        "docs": "/docs",
     }
 
-@app.get("/api/info", response_model=InfoResponse)
-async def get_info():
-    """Get service information"""
-    return InfoResponse(
-        service="recommendation_engine",
-        environment=os.getenv("ENVIRONMENT", "development"),
-        domain="localhost",
-        uptime=time.time() - start_time
-    )
 
-@app.post("/api/echo", response_model=EchoResponse)
-async def echo_endpoint(request: EchoRequest):
-    """Echo endpoint for testing"""
-    return EchoResponse(
-        received=request,
-        timestamp=datetime.utcnow().isoformat()
-    )
-
-@app.exception_handler(404)
-async def not_found_handler(request, exc):
-    return HTTPException(
-        status_code=404,
-        detail={
-            "error": "Not Found",
-            "path": str(request.url.path)
-        }
-    )
-
-@app.exception_handler(500)
-async def internal_server_error_handler(request, exc):
-    return HTTPException(
-        status_code=500,
-        detail={
-            "error": "Internal Server Error",
-            "message": "Something went wrong!"
-        }
-    )
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 3000))
-    
-    print(f"🚀 recommendation_engine is starting on port {port}")
-    print(f"📍 Health check: http://localhost:{port}/health")
-    print(f"🌐 API endpoint: http://localhost:{port}/api/info")
-    print(f"💬 Echo endpoint: POST http://localhost:{port}/api/echo")
-    print(f"📖 API docs: http://localhost:{port}/docs")
-    
+    port = config.server_port
+    logger.info("Starting uvicorn on port %d", port)
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=port,
-        reload=os.getenv("ENVIRONMENT") == "development"
+        reload=(config.environment == "development"),
+        log_level=config.log_level,
     )

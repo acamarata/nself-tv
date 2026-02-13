@@ -1,34 +1,31 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling and curl for health checks
-RUN apk add --no-cache dumb-init curl
+# Install FFmpeg and dumb-init for signal handling, curl for health checks
+RUN apk add --no-cache ffmpeg dumb-init curl
 
-# Copy package files
+# Copy package files and install production dependencies
 COPY package*.json ./
+RUN npm install --omit=dev && npm cache clean --force
 
-# Install dependencies
-RUN npm install --only=production && npm cache clean --force
-
-# Copy application files
-COPY . .
+# Copy application source
+COPY src/ src/
 
 # Create non-root user
 RUN addgroup -g 1001 -S appuser && \
     adduser -S appuser -u 1001
 
-# Change ownership
-RUN chown -R appuser:appuser /app
+# Create temp directory for video processing and set ownership
+RUN mkdir -p /tmp/video_processor && \
+    chown -R appuser:appuser /app /tmp/video_processor
 
 USER appuser
 
-# Use PORT from environment or template
 EXPOSE 5005
 
-# Health check using the correct port
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:5005/health || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "worker.js"]
+CMD ["node", "src/index.js"]

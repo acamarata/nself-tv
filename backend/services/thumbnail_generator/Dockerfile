@@ -1,29 +1,33 @@
-FROM node:20-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling and curl for health checks
-RUN apk add --no-cache dumb-init curl
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
 
-# Copy package files and install production dependencies
+# Copy package files
 COPY package*.json ./
-RUN npm install --omit=dev && npm cache clean --force
 
-# Copy application source
-COPY src/ src/
+# Install dependencies
+RUN npm install --only=production && npm cache clean --force
+
+# Copy application files
+COPY . .
 
 # Create non-root user
 RUN addgroup -g 1001 -S appuser && \
     adduser -S appuser -u 1001
 
+# Change ownership
 RUN chown -R appuser:appuser /app
 
 USER appuser
 
 EXPOSE 5006
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:5006/health || exit 1
+# Health check using the correct port
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:5006/health || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "src/index.js"]

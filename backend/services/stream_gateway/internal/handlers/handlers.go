@@ -28,12 +28,14 @@ func NewHandler(
 	sessionMgr *session.Manager,
 	tracker *session.ConcurrencyTracker,
 	log *logrus.Logger,
+	adminKey string,
 ) *Handler {
 	return &Handler{
 		Admission:  ctrl,
 		SessionMgr: sessionMgr,
 		Tracker:    tracker,
 		Log:        log,
+		AdminKey:   adminKey,
 	}
 }
 

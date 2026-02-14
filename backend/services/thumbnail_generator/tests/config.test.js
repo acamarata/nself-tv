@@ -96,9 +96,9 @@ describe('config — redis', () => {
 describe('config — queues', () => {
   it('uses default queue names', () => {
     const config = loadConfig({});
-    expect(config.queues.poster).toBe('image:poster');
-    expect(config.queues.sprite).toBe('image:sprite');
-    expect(config.queues.optimize).toBe('image:optimize');
+    expect(config.queues.poster).toBe('image-poster');
+    expect(config.queues.sprite).toBe('image-sprite');
+    expect(config.queues.optimize).toBe('image-optimize');
   });
 
   it('overrides poster queue from QUEUE_POSTER env var', () => {

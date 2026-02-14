@@ -1,6 +1,55 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 import GuidePage from '@/app/(app)/guide/page';
+import type { LiveChannel, Program } from '@/types/dvr';
+
+// Mock channels and programs data
+const mockChannels: LiveChannel[] = [
+  { id: 'ch-2', number: '2', name: 'WCBS', logoUrl: null, genre: 'News', signalQuality: 95, isFavorite: true },
+  { id: 'ch-4', number: '4', name: 'WNBC', logoUrl: null, genre: 'News', signalQuality: 90, isFavorite: false },
+  { id: 'ch-11', number: '11', name: 'WPIX', logoUrl: null, genre: 'Sports', signalQuality: 85, isFavorite: false },
+];
+
+const now = new Date();
+const mockPrograms: Program[] = [
+  {
+    id: 'prog-ch-2-1',
+    channelId: 'ch-2',
+    title: 'Morning News',
+    description: 'Latest news and weather',
+    startTime: new Date(now.getTime() - 3600000).toISOString(),
+    endTime: new Date(now.getTime() + 3600000).toISOString(),
+    genre: 'News',
+    isNew: false,
+    isLive: true,
+  },
+];
+
+// Mock useRouter
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
+
+// Mock useEPG
+vi.mock('@/hooks/useEPG', () => ({
+  useEPG: () => ({
+    channels: mockChannels,
+    programs: mockPrograms,
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+    getChannelPrograms: vi.fn(),
+    getNowPlaying: vi.fn(),
+    searchPrograms: vi.fn(),
+  }),
+}));
 
 // Mock useAuth for the admin layout
 vi.mock('@/hooks/useAuth', () => ({
@@ -9,6 +58,11 @@ vi.mock('@/hooks/useAuth', () => ({
     isAuthenticated: true,
     isLoading: false,
   }),
+}));
+
+// Mock recording client
+vi.mock('@/lib/plugins/recording-client', () => ({
+  scheduleRecording: vi.fn(),
 }));
 
 describe('GuidePage', () => {

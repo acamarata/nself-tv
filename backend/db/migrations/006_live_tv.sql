@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS channels (
 -- Programs (EPG data)
 CREATE TABLE IF NOT EXISTS programs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    channel_id UUID REFERENCES channels(id),
+    channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
     title VARCHAR(500) NOT NULL,
     description TEXT,
     start_time TIMESTAMPTZ NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS programs (
 -- Live events
 CREATE TABLE IF NOT EXISTS live_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    channel_id UUID REFERENCES channels(id),
+    channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
     title VARCHAR(500) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     start_time TIMESTAMPTZ NOT NULL,

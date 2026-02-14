@@ -16,9 +16,9 @@ const config = {
 
   /** BullMQ queue names */
   queues: {
-    poster: process.env.QUEUE_POSTER || 'image:poster',
-    sprite: process.env.QUEUE_SPRITE || 'image:sprite',
-    optimize: process.env.QUEUE_OPTIMIZE || 'image:optimize',
+    poster: process.env.QUEUE_POSTER || 'image-poster',
+    sprite: process.env.QUEUE_SPRITE || 'image-sprite',
+    optimize: process.env.QUEUE_OPTIMIZE || 'image-optimize',
   },
 
   /** Worker concurrency per queue */

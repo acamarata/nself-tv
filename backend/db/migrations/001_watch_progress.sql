@@ -72,7 +72,7 @@ CREATE OR REPLACE VIEW continue_watching AS
 SELECT
   wp.*,
   mi.title AS media_title,
-  mi.content_type,
+  mi.type AS content_type,
   mi.poster_url,
   mi.backdrop_url,
   f.name AS family_name,

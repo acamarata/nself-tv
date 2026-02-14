@@ -1,5 +1,15 @@
 import { gql } from '@apollo/client';
 
+// --- Users ---
+export const GET_USER_FAMILY = gql`
+  query GetUserFamily($userId: uuid!) {
+    users_by_pk(id: $userId) {
+      id
+      family_id
+    }
+  }
+`;
+
 // --- Profiles ---
 export const GET_FAMILY_PROFILES = gql`
   query GetFamilyProfiles($userId: uuid!) {
@@ -61,7 +71,7 @@ export const DELETE_PROFILE = gql`
 export const GET_CONTINUE_WATCHING = gql`
   query GetContinueWatching($profileId: uuid!, $limit: Int = 20) {
     watch_progress(
-      where: { profile_id: { _eq: $profileId }, percentage: { _lt: 95 }, percentage: { _gt: 5 } }
+      where: { profile_id: { _eq: $profileId }, percentage: { _lt: 95, _gt: 5 } }
       order_by: { updated_at: desc }
       limit: $limit
     ) {

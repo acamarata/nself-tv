@@ -1,16 +1,24 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Clock, RefreshCw, AlertCircle } from 'lucide-react';
 import { EPGGrid, SLOT_WIDTH, SLOT_DURATION_MS } from '@/components/guide/EPGGrid';
 import { ProgramModal } from '@/components/guide/ProgramModal';
 import { useEPG } from '@/hooks/useEPG';
+import { useAuth } from '@/hooks/useAuth';
+import * as RecordingClient from '@/lib/plugins/recording-client';
 import type { Program } from '@/types/dvr';
+
+const RECORDING_BASE_URL = process.env.NEXT_PUBLIC_RECORDING_URL || 'http://localhost:3602';
 
 /** Number of 30-min slots to show (48 = 24 hours) */
 const VISIBLE_SLOTS = 48;
 
 export default function GuidePage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [recordingError, setRecordingError] = useState<string | null>(null);
   const {
     channels,
     programs,
@@ -60,15 +68,30 @@ export default function GuidePage() {
 
   const handleTune = useCallback((program: Program) => {
     setSelectedProgram(null);
-    // TODO: Navigate to live player for this channel
-    // router.push(`/watch/live/${program.channelId}`);
-  }, []);
+    // Navigate to live player for this channel
+    router.push(`/watch/live/${program.channelId}`);
+  }, [router]);
 
-  const handleRecord = useCallback((program: Program) => {
+  const handleRecord = useCallback(async (program: Program) => {
     setSelectedProgram(null);
-    // TODO: Schedule DVR recording via recording plugin
-    // recordingClient.scheduleRecording(program.id);
-  }, []);
+    setRecordingError(null);
+    if (!user?.id) {
+      setRecordingError('You must be signed in to schedule recordings.');
+      return;
+    }
+    try {
+      const familyId = user.id;
+      await RecordingClient.scheduleRecording(
+        program.id,
+        program.channelId,
+        familyId,
+        RECORDING_BASE_URL
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to schedule recording';
+      setRecordingError(message);
+    }
+  }, [user]);
 
   const handleRefresh = useCallback(async () => {
     await refetch();
@@ -164,6 +187,25 @@ export default function GuidePage() {
             <p className="text-sm text-text-primary font-medium">Failed to refresh guide</p>
             <p className="text-xs text-text-secondary mt-1">{error}</p>
           </div>
+        </div>
+      )}
+
+      {/* Recording error banner */}
+      {recordingError && (
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-text-primary font-medium">Recording failed</p>
+            <p className="text-xs text-text-secondary mt-1">{recordingError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRecordingError(null)}
+            className="text-text-secondary hover:text-text-primary text-sm"
+            aria-label="Dismiss recording error"
+          >
+            &times;
+          </button>
         </div>
       )}
 

@@ -5,9 +5,14 @@ import type { ReactNode } from 'react';
 import type { AuthState, AuthTokens, LoginCredentials, RegisterData, User } from '@/types/auth';
 import * as authApi from './api';
 
-const TOKEN_KEY = 'ntv_tokens';
+const REFRESH_TOKEN_KEY = 'ntv_refresh_token';
 const USER_KEY = 'ntv_user';
 const REFRESH_MARGIN_MS = 5 * 60 * 1000; // Refresh 5 minutes before expiry
+
+// SECURITY: Store access token in memory only (not localStorage/sessionStorage)
+// This prevents XSS attacks from stealing the token
+let accessTokenMemory: string | null = null;
+let accessTokenExpiresAt: number | null = null;
 
 export interface AuthContextValue extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -18,11 +23,20 @@ export interface AuthContextValue extends AuthState {
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-function loadTokens(): AuthTokens | null {
+/**
+ * Get access token from memory.
+ * Returns null if not set or expired.
+ */
+export function getAccessToken(): string | null {
+  if (!accessTokenMemory || !accessTokenExpiresAt) return null;
+  if (accessTokenExpiresAt <= Date.now()) return null;
+  return accessTokenMemory;
+}
+
+function loadRefreshToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(TOKEN_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return sessionStorage.getItem(REFRESH_TOKEN_KEY);
   } catch {
     return null;
   }
@@ -31,7 +45,7 @@ function loadTokens(): AuthTokens | null {
 function loadUser(): User | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(USER_KEY);
+    const raw = sessionStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -39,13 +53,23 @@ function loadUser(): User | null {
 }
 
 function saveAuth(user: User, tokens: AuthTokens): void {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-  localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens));
+  // Access token stored in memory only
+  accessTokenMemory = tokens.accessToken;
+  accessTokenExpiresAt = tokens.expiresAt;
+
+  // Refresh token and user in sessionStorage (cleared on tab close)
+  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  sessionStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
 }
 
 function clearAuth(): void {
-  localStorage.removeItem(USER_KEY);
-  localStorage.removeItem(TOKEN_KEY);
+  // Clear memory
+  accessTokenMemory = null;
+  accessTokenExpiresAt = null;
+
+  // Clear sessionStorage
+  sessionStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -79,29 +103,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const storedTokens = loadTokens();
+    // Silent refresh: Attempt to restore session using refresh token
+    const storedRefreshToken = loadRefreshToken();
     const storedUser = loadUser();
-    if (storedTokens && storedUser) {
-      if (storedTokens.expiresAt > Date.now()) {
-        setUser(storedUser);
-        setTokens(storedTokens);
-        scheduleRefresh(storedTokens);
-      } else {
-        authApi.refreshToken(storedTokens.refreshToken)
-          .then((newTokens) => {
-            setUser(storedUser);
-            setTokens(newTokens);
-            saveAuth(storedUser, newTokens);
-            scheduleRefresh(newTokens);
-          })
-          .catch(() => {
-            clearAuth();
-          });
-      }
+
+    if (storedRefreshToken && storedUser) {
+      // Try to get new access token using refresh token
+      authApi.refreshToken(storedRefreshToken)
+        .then((newTokens) => {
+          setUser(storedUser);
+          setTokens(newTokens);
+          saveAuth(storedUser, newTokens);
+          scheduleRefresh(newTokens);
+        })
+        .catch(() => {
+          // Refresh token expired or invalid - clear auth
+          clearAuth();
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
+
+    // Clear tokens on tab/window close for security
+    const handleBeforeUnload = () => {
+      clearAuth();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [scheduleRefresh]);
 

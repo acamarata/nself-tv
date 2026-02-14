@@ -16,6 +16,7 @@ const mockGetDeviceId = vi.mocked(deviceModule.getDeviceId);
 
 const mockUser = {
   id: 'user-123',
+  familyId: 'family-123',
   email: 'test@example.com',
   displayName: 'Test User',
   avatarUrl: null,
@@ -158,7 +159,7 @@ describe('usePlaybackSession', () => {
         userId: 'user-123',
         mediaId: 'media-456',
         deviceId: 'device-123',
-        familyId: 'user-123', // Using userId as familyId for now
+        familyId: 'family-123', // Now uses real familyId from user object
         userRole: 'user',
         contentRating: 'PG-13',
         profileContentRatingLimit: 'TV-MA',

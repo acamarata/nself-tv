@@ -87,6 +87,38 @@ export function createRecording(
   });
 }
 
+/**
+ * Schedule a recording for a program.
+ * Convenience wrapper around createRecording for EPG program scheduling.
+ *
+ * Note: This is a simplified wrapper. In production, you would need to:
+ * 1. Create a live_event from the program data
+ * 2. Get the eventId from the created event
+ * 3. Pass that eventId to createRecording
+ *
+ * For now, this uses programId as eventId (they may be the same in some systems).
+ *
+ * @param programId - Program ID from EPG (used as eventId)
+ * @param channelId - Channel ID for the recording
+ * @param familyId - Family ID for access control
+ * @param baseUrl - Base URL of recording service
+ */
+export function scheduleRecording(
+  programId: string,
+  channelId: string,
+  familyId: string,
+  baseUrl: string = DEFAULT_BASE_URL,
+): Promise<Recording> {
+  return createRecording(
+    {
+      eventId: programId, // Using programId as eventId
+      channelId,
+      familyId,
+    },
+    baseUrl,
+  );
+}
+
 export function finalizeRecording(
   recordingId: string,
   baseUrl: string = DEFAULT_BASE_URL,

@@ -5,6 +5,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { VideoPlayer } from '@/components/player/VideoPlayer';
 import { PlayerControls } from '@/components/player/PlayerControls';
+import { usePlaybackSession } from '@/hooks/usePlaybackSession';
 import type { VideoPlayerHandle } from '@/components/player/VideoPlayer';
 
 export default function PlayPage() {
@@ -23,8 +24,9 @@ export default function PlayPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHeader, setShowHeader] = useState(true);
   const headerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { session } = usePlaybackSession(mediaId);
 
-  const mockSrc = `/api/stream/mock/${mediaId}/master.m3u8`;
+  const streamSrc = session?.signedUrl || `/api/stream/${mediaId}/master.m3u8`;
 
   const resetHeaderTimer = useCallback(() => {
     setShowHeader(true);
@@ -132,7 +134,7 @@ export default function PlayPage() {
       <div className="flex-1 relative">
         <VideoPlayer
           ref={playerRef}
-          src={mockSrc}
+          src={streamSrc}
           autoplay={false}
           onProgress={handleProgress}
           className="w-full h-full"

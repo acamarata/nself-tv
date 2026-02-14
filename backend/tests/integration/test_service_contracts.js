@@ -98,18 +98,24 @@ const customServices = extractCustomServices(env);
 // ---------------------------------------------------------------------------
 
 describe('Service Configuration', () => {
-  it('should define exactly 6 custom services in .env.dev', () => {
-    expect(customServices).toHaveLength(6);
+  it('should define all 10 custom services in .env.dev', () => {
+    expect(customServices).toHaveLength(10);
   });
 
   it('should have all expected service names', () => {
     const names = customServices.map((s) => s.name);
+    // Phase 2 services
     expect(names).toContain('library_service');
     expect(names).toContain('discovery_service');
     expect(names).toContain('stream_gateway');
     expect(names).toContain('recommendation_engine');
     expect(names).toContain('video_processor');
     expect(names).toContain('thumbnail_generator');
+    // Phase 5 plugin services
+    expect(names).toContain('devices');
+    expect(names).toContain('epg');
+    expect(names).toContain('sports');
+    expect(names).toContain('recording');
   });
 
   it('should assign unique ports to every custom service', () => {
@@ -118,10 +124,10 @@ describe('Service Configuration', () => {
     expect(uniquePorts.size).toBe(ports.length);
   });
 
-  it('should use ports in the 5001-5099 range for custom services', () => {
+  it('should use valid ports for custom services', () => {
     for (const svc of customServices) {
-      expect(svc.port).toBeGreaterThanOrEqual(5001);
-      expect(svc.port).toBeLessThanOrEqual(5099);
+      expect(svc.port).toBeGreaterThanOrEqual(1024);
+      expect(svc.port).toBeLessThanOrEqual(65535);
     }
   });
 
@@ -156,6 +162,10 @@ describe('Service Configuration', () => {
       recommendation_engine: 5004,
       video_processor: 5005,
       thumbnail_generator: 5006,
+      devices: 3603,
+      epg: 3031,
+      sports: 3035,
+      recording: 3602,
     };
 
     for (const svc of customServices) {

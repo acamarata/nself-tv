@@ -2,12 +2,19 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import * as DevicesClient from '@/lib/plugins/devices-client';
+import { useAuth } from './useAuth';
 
 const DEVICES_BASE_URL = process.env.NEXT_PUBLIC_DEVICES_URL || 'http://localhost:3603';
 
+export interface UseDevicesOptions {
+  /** Family ID to fetch devices for. If not provided, uses authenticated user's family ID. */
+  familyId?: string;
+  /** Auto-refresh interval in milliseconds. Set to 0 to disable. Default: 30 seconds. */
+  refreshInterval?: number;
+}
+
 export interface UseDevicesResult {
   devices: DevicesClient.Device[];
-  sessions: DevicesClient.IngestSession[];
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -15,28 +22,41 @@ export interface UseDevicesResult {
   revokeDevice: (deviceId: string) => Promise<void>;
 }
 
-export function useDevices(refreshInterval = 30000): UseDevicesResult {
+/**
+ * Hook to manage device fleet for a family.
+ * Requires authentication. Uses user's family ID by default.
+ *
+ * @param options - Configuration options
+ * @returns Device fleet data and control functions
+ */
+export function useDevices(options: UseDevicesOptions = {}): UseDevicesResult {
+  const { refreshInterval = 30000, familyId: providedFamilyId } = options;
+  const { user } = useAuth();
   const [devices, setDevices] = useState<DevicesClient.Device[]>([]);
-  const [sessions, setSessions] = useState<DevicesClient.IngestSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use provided familyId or fall back to user's family (user.id for now, will be user.family_id when available)
+  const familyId = providedFamilyId || (user?.id ?? null);
+
   const fetchData = useCallback(async () => {
+    if (!familyId) {
+      setError('No family ID available');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      const [devicesData, sessionsData] = await Promise.all([
-        DevicesClient.listDevices(DEVICES_BASE_URL),
-        DevicesClient.listIngestSessions(DEVICES_BASE_URL),
-      ]);
+      const devicesData = await DevicesClient.listDevices(familyId, DEVICES_BASE_URL);
       setDevices(devicesData);
-      setSessions(sessionsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch devices');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [familyId]);
 
   useEffect(() => {
     fetchData();
@@ -49,15 +69,19 @@ export function useDevices(refreshInterval = 30000): UseDevicesResult {
   }, [refreshInterval, fetchData]);
 
   const enrollDevice = useCallback(async (name: string, type: string) => {
-    const result = await DevicesClient.enrollDevice(name, type, DEVICES_BASE_URL);
+    if (!familyId) throw new Error('No family ID available');
+
+    // Generate bootstrap token
+    const { token } = await DevicesClient.createBootstrapToken(familyId, type, DEVICES_BASE_URL);
+
     await fetchData();
-    return result.enrollmentToken;
-  }, [fetchData]);
+    return token;
+  }, [familyId, fetchData]);
 
   const revokeDevice = useCallback(async (deviceId: string) => {
     await DevicesClient.revokeDevice(deviceId, DEVICES_BASE_URL);
     await fetchData();
   }, [fetchData]);
 
-  return { devices, sessions, isLoading, error, refetch: fetchData, enrollDevice, revokeDevice };
+  return { devices, isLoading, error, refetch: fetchData, enrollDevice, revokeDevice };
 }

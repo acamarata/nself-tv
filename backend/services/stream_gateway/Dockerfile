@@ -2,44 +2,34 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-# Install git for module downloads.
-RUN apk add --no-cache git
-
-# Copy go module files and download dependencies first (layer caching).
+# Copy go mod files and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code.
+# Copy source code
 COPY . .
 
-# Build the binary with optimizations.
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -a -installsuffix cgo \
-    -o server .
+# Build the binary (use -mod=mod to avoid vendor issues)
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=mod -a -installsuffix cgo -o server .
 
-# Final stage: minimal runtime image.
-FROM alpine:3.19
+# Final stage
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates wget
 
-RUN apk add --no-cache ca-certificates wget tzdata
+WORKDIR /root/
 
-WORKDIR /app
-
-# Copy the binary from builder.
+# Copy the binary from builder
 COPY --from=builder /app/server .
 
-# Create non-root user.
+# Create non-root user
 RUN addgroup -g 1001 -S appuser && \
     adduser -S appuser -u 1001 && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /root
 
 USER appuser
 
 EXPOSE 5003
 
-ENV PORT=5003
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5003/health || exit 1
-
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:5003/health || exit 1
 CMD ["./server"]

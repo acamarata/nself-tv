@@ -153,3 +153,12 @@ export function getDevice(
     method: 'GET',
   });
 }
+
+export function revokeDevice(
+  deviceId: string,
+  baseUrl: string = DEFAULT_BASE_URL,
+): Promise<void> {
+  return request<void>(baseUrl, `/api/v1/devices/${deviceId}`, {
+    method: 'DELETE',
+  });
+}

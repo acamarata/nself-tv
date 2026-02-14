@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type Hls from 'hls.js';
+import Hls from 'hls.js';
 
 /** Number of buffering stalls before auto-reverting to auto mode. */
 const MAX_BUFFERING_STALLS = 3;
@@ -75,20 +75,16 @@ export function useManualQuality({
       }
     };
 
-    /**
-     * HLS.js emits Events.ERROR for buffer stall events.
-     * We listen on the 'hlsError' event name and check for buffer stall details.
-     */
-    const onError = (_event: string, data: { details: string }) => {
+    const onError = (_event: typeof Hls.Events.ERROR, data: { details: string }) => {
       if (data.details === 'bufferStalledError') {
         onBufferStalled();
       }
     };
 
-    hlsInstance.on('hlsError' as never, onError as never);
+    hlsInstance.on(Hls.Events.ERROR, onError);
 
     return () => {
-      hlsInstance.off('hlsError' as never, onError as never);
+      hlsInstance.off(Hls.Events.ERROR, onError);
     };
   }, [hlsInstance, manualLevel]);
 

@@ -1,20 +1,7 @@
 import { ApolloClient, InMemoryCache, createHttpLink, split } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { getMainDefinition } from '@apollo/client/utilities';
-
-const TOKEN_KEY = 'ntv_tokens';
-
-function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(TOKEN_KEY);
-    if (!raw) return null;
-    const tokens = JSON.parse(raw);
-    return tokens.accessToken || null;
-  } catch {
-    return null;
-  }
-}
+import { getAccessToken } from '@/lib/auth/AuthProvider';
 
 export function createApolloClient(graphqlUrl?: string) {
   const httpLink = createHttpLink({

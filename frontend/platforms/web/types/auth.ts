@@ -1,11 +1,17 @@
 export interface User {
   id: string;
+  familyId: string;
   email: string;
   displayName: string;
   avatarUrl: string | null;
   defaultRole: string;
   roles: string[];
   createdAt: string;
+  metadata?: {
+    familyId?: string;
+    familyRole?: string;
+    [key: string]: unknown;
+  };
 }
 
 export interface AuthTokens {

@@ -53,8 +53,7 @@ export function useAutoplayNext(
 
   // Fetch next episode info on mount / mediaId change
   useEffect(() => {
-    // TODO: Query next episode from backend episode graph
-    // Mock: no next episode available in mock mode
+    // Phase 6 will add the episode graph API; until then, autoplay stays inert.
     setNextEpisode(null);
     setShowPrompt(false);
     setCountdownActive(false);

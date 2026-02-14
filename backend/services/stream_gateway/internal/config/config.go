@@ -25,6 +25,8 @@ type Config struct {
 	MaxDeviceStreams int
 	// Session TTL (heartbeat extends this).
 	SessionTTL time.Duration
+	// Admin API key for protected endpoints.
+	AdminKey string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -34,11 +36,12 @@ func Load() *Config {
 		DatabaseURL:      getEnv("DATABASE_URL", buildDatabaseURL()),
 		RedisURL:         getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		LogLevel:         getEnv("LOG_LEVEL", "info"),
-		JWTSecret:        getEnv("JWT_SECRET", "change-me-in-production"),
+		JWTSecret:        requireEnv("JWT_SECRET"),
 		TokenExpiry:      getEnvDuration("TOKEN_EXPIRY", 4*time.Hour),
 		MaxFamilyStreams: getEnvInt("MAX_FAMILY_STREAMS", 10),
 		MaxDeviceStreams: getEnvInt("MAX_DEVICE_STREAMS", 2),
 		SessionTTL:       getEnvDuration("SESSION_TTL", 5*time.Minute),
+		AdminKey:         getEnv("ADMIN_KEY", ""),
 	}
 }
 
@@ -53,6 +56,14 @@ func buildDatabaseURL() string {
 
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		user, password, host, port, dbName, sslMode)
+}
+
+// requireEnv reads a required environment variable or panics with a clear message.
+func requireEnv(key string) string {
+	if value, ok := os.LookupEnv(key); ok && value != "" {
+		return value
+	}
+	panic(fmt.Sprintf("required environment variable %s is not set", key))
 }
 
 func getEnv(key, fallback string) string {

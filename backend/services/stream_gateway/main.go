@@ -96,7 +96,7 @@ func main() {
 	router.Use(requestLogger(log))
 
 	// Register routes.
-	h := handlers.NewHandler(admissionCtrl, sessionMgr, tracker, log)
+	h := handlers.NewHandler(admissionCtrl, sessionMgr, tracker, log, cfg.AdminKey)
 	h.RegisterRoutes(router)
 
 	// Start periodic cleanup of expired sessions in the concurrency tracker.

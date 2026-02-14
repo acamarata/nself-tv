@@ -16,9 +16,9 @@ const config = {
 
   /** BullMQ queue names */
   queues: {
-    transcode: process.env.QUEUE_TRANSCODE || 'video:transcode',
-    trickplay: process.env.QUEUE_TRICKPLAY || 'video:trickplay',
-    subtitle: process.env.QUEUE_SUBTITLE || 'video:subtitle',
+    transcode: process.env.QUEUE_TRANSCODE || 'video-transcode',
+    trickplay: process.env.QUEUE_TRICKPLAY || 'video-trickplay',
+    subtitle: process.env.QUEUE_SUBTITLE || 'video-subtitle',
   },
 
   /** Worker concurrency per queue */

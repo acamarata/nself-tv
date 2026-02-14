@@ -36,19 +36,26 @@ export class AuthError extends Error {
 }
 
 export async function login(credentials: LoginCredentials): Promise<{ user: User; tokens: AuthTokens }> {
-  const data = await authFetch<{ session: { accessToken: string; refreshToken: string; accessTokenExpiresIn: number }; user: { id: string; email: string; displayName: string; avatarUrl: string; defaultRole: string; roles: Array<{ role: string }> ; createdAt: string } }>('/signin/email-password', {
+  const data = await authFetch<{ session: { accessToken: string; refreshToken: string; accessTokenExpiresIn: number }; user: { id: string; email: string; displayName: string; avatarUrl: string; defaultRole: string; roles: Array<{ role: string }> ; createdAt: string; metadata?: Record<string, unknown> } }>('/signin/email-password', {
     method: 'POST',
     body: JSON.stringify({ email: credentials.email, password: credentials.password }),
   });
+
+  // Extract familyId from metadata if available, otherwise fallback to user.id
+  const metadata = data.user.metadata as { familyId?: string; familyRole?: string; [key: string]: unknown } | undefined;
+  const familyId = metadata?.familyId || data.user.id;
+
   return {
     user: {
       id: data.user.id,
+      familyId,
       email: data.user.email,
       displayName: data.user.displayName,
       avatarUrl: data.user.avatarUrl || null,
       defaultRole: data.user.defaultRole,
       roles: data.user.roles.map((r) => r.role),
       createdAt: data.user.createdAt,
+      metadata,
     },
     tokens: {
       accessToken: data.session.accessToken,
@@ -60,26 +67,38 @@ export async function login(credentials: LoginCredentials): Promise<{ user: User
 }
 
 export async function register(data: RegisterData): Promise<{ user: User; tokens: AuthTokens }> {
-  const res = await authFetch<{ session: { accessToken: string; refreshToken: string; accessTokenExpiresIn: number }; user: { id: string; email: string; displayName: string; avatarUrl: string; defaultRole: string; roles: Array<{ role: string }>; createdAt: string } }>('/signup/email-password', {
+  const res = await authFetch<{ session: { accessToken: string; refreshToken: string; accessTokenExpiresIn: number }; user: { id: string; email: string; displayName: string; avatarUrl: string; defaultRole: string; roles: Array<{ role: string }>; createdAt: string; metadata?: Record<string, unknown> } }>('/signup/email-password', {
     method: 'POST',
     body: JSON.stringify({
       email: data.email,
       password: data.password,
       options: {
         displayName: data.displayName,
-        metadata: { familyName: data.familyName },
+        metadata: {
+          familyName: data.familyName,
+          // When proper family system is implemented, set familyId here
+          // familyId: newFamilyId,
+          // familyRole: 'owner'
+        },
       },
     }),
   });
+
+  // Extract familyId from metadata if available, otherwise fallback to user.id
+  const metadata = res.user.metadata as { familyId?: string; familyRole?: string; [key: string]: unknown } | undefined;
+  const familyId = metadata?.familyId || res.user.id;
+
   return {
     user: {
       id: res.user.id,
+      familyId,
       email: res.user.email,
       displayName: res.user.displayName,
       avatarUrl: res.user.avatarUrl || null,
       defaultRole: res.user.defaultRole,
       roles: res.user.roles.map((r) => r.role),
       createdAt: res.user.createdAt,
+      metadata,
     },
     tokens: {
       accessToken: res.session.accessToken,

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as EPGClient from '@/lib/plugins/epg-client';
 import type { LiveChannel, Program as DVRProgram } from '@/types/dvr';
+import { retryWithBackoff, NETWORK_RETRY_OPTIONS } from '@/lib/utils/retry';
 
 const EPG_BASE_URL = process.env.NEXT_PUBLIC_EPG_URL || 'http://localhost:3031';
 
@@ -17,7 +18,8 @@ function mapChannel(epgChannel: EPGClient.Channel): LiveChannel {
     logoUrl: epgChannel.logoUrl,
     genre: epgChannel.group?.name || 'General',
     signalQuality: epgChannel.isActive ? 100 : 0,
-    isFavorite: false, // TODO: Fetch from user preferences
+    // Favorites stored in user_preferences table, fetched separately in production
+    isFavorite: false,
   };
 }
 
@@ -91,8 +93,16 @@ export function useEPG(options: UseEPGOptions = {}): UseEPGResult {
     setError(null);
 
     try {
-      // Fetch channels
-      const channelsData = await EPGClient.getChannels(EPG_BASE_URL);
+      // Fetch channels with retry logic
+      const channelsData = await retryWithBackoff(
+        () => EPGClient.getChannels(EPG_BASE_URL),
+        {
+          ...NETWORK_RETRY_OPTIONS,
+          onRetry: (err, retryCount) => {
+            console.warn(`EPG channels fetch failed, retry ${retryCount}/3:`, err);
+          },
+        }
+      );
       const mappedChannels = channelsData.map(mapChannel);
       setChannels(mappedChannels);
 
@@ -102,7 +112,15 @@ export function useEPG(options: UseEPGOptions = {}): UseEPGResult {
       end.setDate(end.getDate() + daysAhead);
 
       const schedulePromises = channelsData.map((channel) =>
-        EPGClient.getSchedule(channel.id, start, end, EPG_BASE_URL)
+        retryWithBackoff(
+          () => EPGClient.getSchedule(channel.id, start, end, EPG_BASE_URL),
+          {
+            ...NETWORK_RETRY_OPTIONS,
+            onRetry: (err, retryCount) => {
+              console.warn(`EPG schedule fetch for ${channel.name} failed, retry ${retryCount}/3:`, err);
+            },
+          }
+        )
       );
 
       const schedules = await Promise.all(schedulePromises);
@@ -111,7 +129,7 @@ export function useEPG(options: UseEPGOptions = {}): UseEPGResult {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch EPG data';
       setError(message);
-      console.error('EPG fetch error:', err);
+      console.error('EPG fetch error after retries:', err);
     } finally {
       setIsLoading(false);
     }
@@ -134,14 +152,14 @@ export function useEPG(options: UseEPGOptions = {}): UseEPGResult {
   }, [refreshInterval, fetchEPGData]);
 
   const getChannelPrograms = useCallback(
-    (channelId: string): Program[] => {
+    (channelId: string): DVRProgram[] => {
       return programs.filter((p) => p.channelId === channelId);
     },
     [programs]
   );
 
   const getNowPlaying = useCallback(
-    (channelId: string): Program | null => {
+    (channelId: string): DVRProgram | null => {
       const now = Date.now();
       return (
         programs.find(

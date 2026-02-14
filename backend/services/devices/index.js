@@ -1,0 +1,117 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Security middleware
+app.use(helmet());
+
+// Environment-aware CORS configuration
+const getCorsOrigin = () => {
+  if (process.env.CORS_ORIGIN) {
+    return process.env.CORS_ORIGIN.split(',');
+  }
+
+  const env = process.env.ENV || 'development';
+  const baseDomain = process.env.BASE_DOMAIN || 'localhost';
+
+  if (env === 'production') {
+    return [`https://${baseDomain}`, `https://*.${baseDomain}`];
+  } else if (env === 'staging') {
+    return [`https://${baseDomain}`, `https://*.${baseDomain}`, 'http://localhost:3000'];
+  } else {
+    return [/^http:\/\/localhost(:\d+)?$/, /^http:\/\/.*\.local\.nself\.org$/];
+  }
+};
+
+// CORS middleware
+app.use(cors({
+  origin: getCorsOrigin(),
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    service: 'devices',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Hello World endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Hello from devices!',
+    project: 'nself-tv',
+    framework: 'Express',
+    version: '4.18.2'
+  });
+});
+
+// Example API endpoint
+app.get('/api/info', (req, res) => {
+  res.json({
+    service: 'devices',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    domain: 'local.nself.org'
+  });
+});
+
+// Example POST endpoint
+app.post('/api/echo', (req, res) => {
+  res.json({
+    received: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Not Found',
+    path: req.path
+  });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!'
+  });
+});
+
+// Graceful shutdown
+const gracefulShutdown = (server) => {
+  return () => {
+    console.log('🛑 Shutting down gracefully...');
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+      process.exit(0);
+    });
+  };
+};
+
+// Start server
+const server = app.listen(PORT, () => {
+  console.log(`🚀 devices is running on port ${PORT}`);
+  console.log(`📍 Health check: http://localhost:${PORT}/health`);
+  console.log(`🌐 API endpoint: http://localhost:${PORT}/api/info`);
+  console.log(`💬 Echo endpoint: POST http://localhost:${PORT}/api/echo`);
+});
+
+// Handle shutdown signals
+process.on('SIGTERM', gracefulShutdown(server));
+process.on('SIGINT', gracefulShutdown(server));

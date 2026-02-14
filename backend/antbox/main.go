@@ -25,7 +25,7 @@ type statusAdapter struct {
 func (a *statusAdapter) GetDeviceStatuses() []heartbeat.DeviceStatus {
 	// In production, this would query discovered devices and their tuner statuses.
 	// For now, return an empty slice; the heartbeat still reports other metrics.
-	return nil
+	return []heartbeat.DeviceStatus{}
 }
 
 func (a *statusAdapter) GetActiveEventCount() int {

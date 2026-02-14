@@ -31,7 +31,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5003';
  */
 export function usePlaybackSession(mediaId: string, contentRating?: string) {
   const { user, tokens } = useAuth();
-  const { currentProfile, profiles } = useProfiles();
+  const { currentProfile } = useProfiles();
   const [session, setSession] = useState<PlaybackSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -72,11 +72,9 @@ export function usePlaybackSession(mediaId: string, contentRating?: string) {
       return;
     }
 
-    // Get family_id from the user's first profile (all profiles share same family_id)
-    const familyId = profiles[0]?.userId ?
-      // For now, we'll use a GraphQL query to get family_id, but as a workaround we can use userId as familyId
-      // TODO: Fetch actual family_id from user metadata or profile
-      user.id : user.id;
+    // Use familyId from user object (populated by AuthProvider)
+    // Fallback to user.id for backwards compatibility if familyId not yet available
+    const familyId = user.familyId || user.id;
 
     const deviceId = getDeviceId();
     const userRole = user.defaultRole || 'user';
@@ -148,7 +146,7 @@ export function usePlaybackSession(mediaId: string, contentRating?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [user, tokens, mediaId, contentRating, currentProfile, profiles]);
+  }, [user, tokens, mediaId, contentRating, currentProfile]);
 
   const endSession = useCallback(async () => {
     if (!session || !tokens?.accessToken) return;

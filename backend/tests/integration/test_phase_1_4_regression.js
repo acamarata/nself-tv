@@ -66,6 +66,10 @@ const PHASE2_SERVICES = {
     'recommendation_engine',
     'video_processor',
     'thumbnail_generator',
+    'devices',
+    'epg',
+    'sports',
+    'recording',
   ],
   ports: {
     library_service: 5001,
@@ -74,6 +78,10 @@ const PHASE2_SERVICES = {
     recommendation_engine: 5004,
     video_processor: 5005,
     thumbnail_generator: 5006,
+    devices: 3603,
+    epg: 3031,
+    sports: 3035,
+    recording: 3602,
   },
 };
 
@@ -356,8 +364,8 @@ describe('Phase 1: Foundation - Database Schema', () => {
 // ---------------------------------------------------------------------------
 
 describe('Phase 2: Backend Services - Custom Services', () => {
-  it('should define all 6 custom services', () => {
-    expect(customServices).toHaveLength(6);
+  it('should define all 10 custom services', () => {
+    expect(customServices).toHaveLength(10);
   });
 
   it('should assign correct ports to services', () => {

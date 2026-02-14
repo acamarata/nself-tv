@@ -6,7 +6,7 @@ import type { AuthContextValue } from '@/lib/auth/AuthProvider';
 import type { ReactNode } from 'react';
 
 const mockCtx: AuthContextValue = {
-  user: { id: 'u1', email: 'test@test.com', displayName: 'Test', avatarUrl: null, defaultRole: 'user', roles: ['user'], createdAt: '2026-01-01' },
+  user: { id: 'u1', familyId: 'family-123', email: 'test@test.com', displayName: 'Test', avatarUrl: null, defaultRole: 'user', roles: ['user'], createdAt: '2026-01-01' },
   tokens: { accessToken: 'at', refreshToken: 'rt', expiresIn: 900, expiresAt: Date.now() + 900000 },
   isAuthenticated: true,
   isLoading: false,

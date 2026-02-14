@@ -215,7 +215,9 @@ async function processTranscodeJob(job) {
         (percent) => {
           const scaled =
             renditionBaseProgress + (percent / 100) * perRenditionRange;
-          job.updateProgress(Math.round(scaled));
+          job.updateProgress(Math.round(scaled)).catch((err) => {
+            logger.warn(`[transcode:${job.id}] Progress update failed: ${err.message}`);
+          });
         },
       );
 

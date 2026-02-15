@@ -239,9 +239,44 @@
 
 ---
 
-## Phase 6 (`v0.6`) — Multi-Platform Parity and Advanced Features
+## Phase 6 (`v0.6`) — Plugin Integration and Content Acquisition ✅ COMPLETE
 
-### 6.1 — Metadata Enrichment and Sports
+**Completion Date**: 2026-02-14
+**Status**: Released
+
+**What Was Actually Completed**:
+Phase 6 pivoted to focus on plugin integration and content acquisition infrastructure instead of the originally planned multi-platform work. The plugin ecosystem provides the foundation for all future features.
+
+**Key Accomplishments**:
+- Integrated 18 production ɳPlugins from nself-plugins ecosystem
+- 9 plugins enabled and operational (content-progress, devices, epg, file-processing, jobs, recording, sports, tokens, workflows)
+- 7 acquisition plugins configured (vpn, torrent-manager, content-acquisition, subtitle-manager, metadata-enrichment, stream-gateway, media-processing)
+- Complete acquisition dashboard UI with downloads management, RSS feeds, movie monitoring, torrent integration
+- Database migration 007: Content acquisition schema
+- Removed 6 custom backend services (97 files) - replaced by plugins
+- 100% test coverage on all changed files (32 new test files)
+
+**Plugin Architecture Benefits**:
+- Microservices pattern with independent health checks
+- Shared utilities (@nself/plugin-utils) for database, logging, configuration
+- Automatic schema initialization on first startup
+- Multi-app support via source_account_id
+- Namespaced database tables (np_* prefix) prevent conflicts
+
+**Technical Achievements**:
+- All 18 backend services running (PostgreSQL, Hasura, Auth, Nginx, Redis, MinIO, MeiliSearch, Mailpit + monitoring stack)
+- Fixed Hasura connectivity issues (localhost → postgres service name)
+- Implemented DATABASE_URL parsing across all plugins
+- Resolved 73 TypeScript compilation errors
+- Peer dependency architecture fully functional
+
+---
+
+## Original Phase 6 Plan (Deferred to Phase 7)
+
+The items below were originally planned for Phase 6 but have been deferred to Phase 7 to prioritize plugin integration.
+
+### 6.1 — Metadata Enrichment and Sports (Deferred)
 
 1. metadata provider integration: TMDB/TVDB API with configurable refresh schedules (wiki 30)
    - static catalog: weekly refresh

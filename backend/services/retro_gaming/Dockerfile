@@ -24,10 +24,10 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Use PORT from environment or template
-EXPOSE 3602
+EXPOSE 3033
 
 # Health check using the correct port
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:3602/health || exit 1
+  CMD wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:3033/health || exit 1
 
 CMD ["node", "index.js"]

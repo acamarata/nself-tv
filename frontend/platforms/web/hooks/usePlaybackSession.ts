@@ -14,12 +14,12 @@ export interface PlaybackSession {
 }
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5003';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3601';
 
 /**
  * Manages a playback session lifecycle: start, heartbeat, and end.
  *
- * Integrates with stream_gateway service for admission control, enforcing:
+ * Integrates with stream-gateway plugin for admission control, enforcing:
  * - RBAC (user role checks)
  * - Content rating limits (parental controls)
  * - Concurrency limits (family and device limits)

@@ -23,6 +23,7 @@ RUN chown -R nodejs:nodejs /app
 
 USER nodejs
 
+# Use PORT from environment or template
 EXPOSE 3035
 
 # Health check using the correct port

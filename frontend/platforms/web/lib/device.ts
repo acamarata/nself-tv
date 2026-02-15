@@ -2,7 +2,7 @@
  * Device identification utilities for stream admission and concurrency tracking.
  *
  * Generates a stable, persistent device ID stored in localStorage.
- * The device ID is used by the stream_gateway to enforce per-device concurrency limits.
+ * The device ID is used by the stream-gateway plugin to enforce per-device concurrency limits.
  */
 
 const DEVICE_ID_KEY = 'ntv_device_id';

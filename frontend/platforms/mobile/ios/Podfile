@@ -1,0 +1,35 @@
+require_relative '../node_modules/react-native/scripts/react_native_pods'
+require_relative '../node_modules/@react-native/scripts/react_native_pods'
+
+platform :ios, '13.0'
+
+target 'nselftv' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    :hermes_enabled => true,
+    :fabric_enabled => false,
+  )
+
+  # React Native dependencies
+  pod 'React-RCTLinking', :path => '../node_modules/react-native/Libraries/LinkingIOS'
+
+  # Navigation
+  pod 'RNScreens', :path => '../node_modules/react-native-screens'
+  pod 'react-native-safe-area-context', :path => '../node_modules/react-native-safe-area-context'
+
+  # Video playback
+  pod 'react-native-video', :path => '../node_modules/react-native-video'
+
+  # AsyncStorage
+  pod 'RNCAsyncStorage', :path => '../node_modules/@react-native-async-storage/async-storage'
+
+  post_install do |installer|
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      end
+    end
+  end
+end

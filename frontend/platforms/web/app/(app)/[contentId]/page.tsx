@@ -9,12 +9,12 @@ import { ContentDetail } from '@/components/content/ContentDetail';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatRuntime } from '@/utils/ratings';
+import { mapToMediaItem } from '@/types/content';
 import {
   GET_MEDIA_ITEM,
   GET_TV_SHOW_SEASONS,
   GET_SEASON_EPISODES,
 } from '@/lib/graphql/queries';
-import type { MediaItem, Season, Episode } from '@/types/content';
 
 export default function ContentDetailPage() {
   const params = useParams();
@@ -29,7 +29,8 @@ export default function ContentDetailPage() {
     skip: !contentId,
   });
 
-  const item: MediaItem | undefined = itemData?.mediaItem;
+  const rawItem = itemData?.media_items_by_pk;
+  const item = rawItem ? mapToMediaItem(rawItem) : undefined;
   const isTVShow = item?.type === 'tv_show';
 
   const { data: seasonsData, loading: seasonsLoading } = useQuery(
@@ -40,21 +41,43 @@ export default function ContentDetailPage() {
     },
   );
 
-  const seasons: Season[] = seasonsData?.seasons ?? [];
-
-  const selectedSeason = seasons.find(
-    (s) => s.seasonNumber === selectedSeasonNumber,
+  // GET_TV_SHOW_SEASONS returns media_items with distinct season_number
+  const seasonNumbers: number[] = (seasonsData?.media_items ?? []).map(
+    (s: { season_number: number }) => s.season_number,
   );
 
   const { data: episodesData, loading: episodesLoading } = useQuery(
     GET_SEASON_EPISODES,
     {
-      variables: { seasonId: selectedSeason?.id },
-      skip: !selectedSeason?.id,
+      variables: { showId: contentId, season: selectedSeasonNumber },
+      skip: !isTVShow || seasonNumbers.length === 0,
     },
   );
 
-  const episodes: Episode[] = episodesData?.episodes ?? [];
+  interface EpisodeRow {
+    id: string;
+    episodeNumber: number;
+    title: string;
+    overview: string | null;
+    thumbnailUrl: string | null;
+    runtimeMinutes: number | null;
+    communityRating: number | null;
+    addedAt: string;
+  }
+
+  // Episodes are media_items with parent_id = showId
+  const episodes: EpisodeRow[] = (episodesData?.media_items ?? []).map(
+    (raw: Record<string, unknown>): EpisodeRow => ({
+      id: raw.id as string,
+      episodeNumber: raw.episode_number as number,
+      title: (raw.title as string) ?? '',
+      overview: (raw.overview as string) ?? null,
+      thumbnailUrl: (raw.thumbnail_url as string) ?? null,
+      runtimeMinutes: (raw.runtime_minutes as number) ?? null,
+      communityRating: (raw.community_rating as number) ?? null,
+      addedAt: (raw.added_at as string) ?? '',
+    }),
+  );
 
   if (itemLoading) {
     return (
@@ -149,11 +172,12 @@ export default function ContentDetailPage() {
               <select
                 value={selectedSeasonNumber}
                 onChange={(e) => setSelectedSeasonNumber(Number(e.target.value))}
+                aria-label="Select season"
                 className="px-3 py-2 bg-surface border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {seasons.map((season) => (
-                  <option key={season.id} value={season.seasonNumber}>
-                    Season {season.seasonNumber}
+                {seasonNumbers.map((num) => (
+                  <option key={num} value={num}>
+                    Season {num}
                   </option>
                 ))}
               </select>
@@ -187,9 +211,9 @@ export default function ContentDetailPage() {
                 >
                   {/* Episode Thumbnail */}
                   <div className="w-40 h-24 bg-surface-hover rounded-lg flex-shrink-0 overflow-hidden relative">
-                    {episode.stillUrl ? (
+                    {episode.thumbnailUrl ? (
                       <Image
-                        src={episode.stillUrl}
+                        src={episode.thumbnailUrl}
                         alt={episode.title}
                         fill
                         className="object-cover"
@@ -220,11 +244,8 @@ export default function ContentDetailPage() {
                       </p>
                     )}
                     <div className="flex items-center gap-3 mt-2 text-xs text-text-tertiary">
-                      {episode.runtime && (
-                        <span>{formatRuntime(episode.runtime)}</span>
-                      )}
-                      {episode.airDate && (
-                        <span>{new Date(episode.airDate).toLocaleDateString()}</span>
+                      {episode.runtimeMinutes && (
+                        <span>{formatRuntime(episode.runtimeMinutes)}</span>
                       )}
                     </div>
                   </div>

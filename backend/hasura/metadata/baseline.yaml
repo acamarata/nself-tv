@@ -1,0 +1,435 @@
+---
+# Hasura metadata for baseline tables (migration 000)
+# Tables: families, users, profiles, device_registrations, media_items, media_variants, subtitle_tracks, audio_tracks
+
+# ============================================================
+# TRACK TABLES
+# ============================================================
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: families
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: users
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: profiles
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: device_registrations
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: media_items
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: media_variants
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: subtitle_tracks
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: audio_tracks
+
+# ============================================================
+# RELATIONSHIPS
+# ============================================================
+
+# families -> users (owner)
+- type: pg_create_object_relationship
+  args:
+    table: families
+    name: owner
+    using:
+      foreign_key_constraint_on: owner_id
+
+# users -> family
+- type: pg_create_object_relationship
+  args:
+    table: users
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+# users -> profiles (array)
+- type: pg_create_array_relationship
+  args:
+    table: users
+    name: profiles
+    using:
+      foreign_key_constraint_on:
+        table: profiles
+        column: user_id
+
+# profiles -> user
+- type: pg_create_object_relationship
+  args:
+    table: profiles
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+# profiles -> family
+- type: pg_create_object_relationship
+  args:
+    table: profiles
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+# device_registrations -> family
+- type: pg_create_object_relationship
+  args:
+    table: device_registrations
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+# device_registrations -> user
+- type: pg_create_object_relationship
+  args:
+    table: device_registrations
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+# media_items -> family
+- type: pg_create_object_relationship
+  args:
+    table: media_items
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+# media_items -> parent (for episodes -> show)
+- type: pg_create_object_relationship
+  args:
+    table: media_items
+    name: parent
+    using:
+      foreign_key_constraint_on: parent_id
+
+# media_items -> episodes (array, inverse of parent)
+- type: pg_create_array_relationship
+  args:
+    table: media_items
+    name: episodes
+    using:
+      foreign_key_constraint_on:
+        table: media_items
+        column: parent_id
+
+# media_items -> variants (array)
+- type: pg_create_array_relationship
+  args:
+    table: media_items
+    name: variants
+    using:
+      foreign_key_constraint_on:
+        table: media_variants
+        column: media_item_id
+
+# media_items -> subtitles (array)
+- type: pg_create_array_relationship
+  args:
+    table: media_items
+    name: subtitles
+    using:
+      foreign_key_constraint_on:
+        table: subtitle_tracks
+        column: media_item_id
+
+# media_items -> audio_tracks (array)
+- type: pg_create_array_relationship
+  args:
+    table: media_items
+    name: audio_tracks
+    using:
+      foreign_key_constraint_on:
+        table: audio_tracks
+        column: media_item_id
+
+# media_variants -> media_item
+- type: pg_create_object_relationship
+  args:
+    table: media_variants
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+# subtitle_tracks -> media_item
+- type: pg_create_object_relationship
+  args:
+    table: subtitle_tracks
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+# audio_tracks -> media_item
+- type: pg_create_object_relationship
+  args:
+    table: audio_tracks
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+# ============================================================
+# PERMISSIONS
+# ============================================================
+
+# families - users can view their own family
+- type: pg_create_select_permission
+  args:
+    table: families
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        id:
+          _eq: X-Hasura-Family-Id
+
+# users - users can view users in their family
+- type: pg_create_select_permission
+  args:
+    table: users
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# profiles - users can view profiles in their family
+- type: pg_create_select_permission
+  args:
+    table: profiles
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: profiles
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - user_id
+        - name
+        - avatar_url
+        - content_rating_limit
+        - pin_hash
+        - language
+        - subtitle_language
+        - audio_language
+        - autoplay_next
+        - preferences
+
+- type: pg_create_update_permission
+  args:
+    table: profiles
+    role: user
+    permission:
+      columns:
+        - name
+        - avatar_url
+        - content_rating_limit
+        - pin_hash
+        - language
+        - subtitle_language
+        - audio_language
+        - autoplay_next
+        - preferences
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: profiles
+    role: user
+    permission:
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# device_registrations - users can view devices in their family
+- type: pg_create_select_permission
+  args:
+    table: device_registrations
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: device_registrations
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - device_name
+        - device_type
+        - platform
+        - user_agent
+        - ip_address
+        - capabilities
+
+- type: pg_create_update_permission
+  args:
+    table: device_registrations
+    role: user
+    permission:
+      columns:
+        - device_name
+        - is_trusted
+        - last_seen_at
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# media_items - users can view media in their family
+- type: pg_create_select_permission
+  args:
+    table: media_items
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# media_items - users can insert media into their family
+- type: pg_create_insert_permission
+  args:
+    table: media_items
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - family_id
+        - type
+        - title
+        - original_title
+        - slug
+        - overview
+        - tagline
+        - year
+        - release_date
+        - runtime_minutes
+        - content_rating
+        - genres
+        - tags
+        - tmdb_id
+        - imdb_id
+        - tvdb_id
+        - parent_id
+        - season_number
+        - episode_number
+        - community_rating
+        - vote_count
+        - credits
+        - poster_url
+        - backdrop_url
+        - thumbnail_url
+        - status
+        - source_path
+        - acquisition_source
+
+# media_items - users can update media in their family
+- type: pg_create_update_permission
+  args:
+    table: media_items
+    role: user
+    permission:
+      columns:
+        - title
+        - original_title
+        - overview
+        - tagline
+        - year
+        - release_date
+        - runtime_minutes
+        - content_rating
+        - genres
+        - tags
+        - poster_url
+        - backdrop_url
+        - thumbnail_url
+        - status
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# media_items - users can delete media in their family
+- type: pg_create_delete_permission
+  args:
+    table: media_items
+    role: user
+    permission:
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# media_variants - users can view variants for media in their family
+- type: pg_create_select_permission
+  args:
+    table: media_variants
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        media_item:
+          family_id:
+            _eq: X-Hasura-Family-Id
+
+# subtitle_tracks - users can view subtitles for media in their family
+- type: pg_create_select_permission
+  args:
+    table: subtitle_tracks
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        media_item:
+          family_id:
+            _eq: X-Hasura-Family-Id
+
+# audio_tracks - users can view audio tracks for media in their family
+- type: pg_create_select_permission
+  args:
+    table: audio_tracks
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        media_item:
+          family_id:
+            _eq: X-Hasura-Family-Id

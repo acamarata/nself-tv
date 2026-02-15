@@ -1,0 +1,511 @@
+---
+# Hasura metadata for music tables (012_music)
+
+# Track tables
+- type: pg_track_table
+  args:
+    schema: public
+    name: music_artists
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: music_albums
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: music_tracks
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: music_playlists
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: music_playlist_tracks
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: music_progress
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: music_subscriptions
+
+# Relationships: music_albums -> music_artists
+- type: pg_create_object_relationship
+  args:
+    table: music_albums
+    name: artist
+    using:
+      foreign_key_constraint_on: artist_id
+
+# Relationships: music_artists -> music_albums (array)
+- type: pg_create_array_relationship
+  args:
+    table: music_artists
+    name: albums
+    using:
+      foreign_key_constraint_on:
+        table: music_albums
+        column: artist_id
+
+# Relationships: music_tracks -> music_albums
+- type: pg_create_object_relationship
+  args:
+    table: music_tracks
+    name: album
+    using:
+      foreign_key_constraint_on: album_id
+
+# Relationships: music_tracks -> music_artists
+- type: pg_create_object_relationship
+  args:
+    table: music_tracks
+    name: artist
+    using:
+      foreign_key_constraint_on: artist_id
+
+# Relationships: music_albums -> music_tracks (array)
+- type: pg_create_array_relationship
+  args:
+    table: music_albums
+    name: tracks
+    using:
+      foreign_key_constraint_on:
+        table: music_tracks
+        column: album_id
+
+# Relationships: music_playlists -> music_playlist_tracks (array)
+- type: pg_create_array_relationship
+  args:
+    table: music_playlists
+    name: playlist_tracks
+    using:
+      foreign_key_constraint_on:
+        table: music_playlist_tracks
+        column: playlist_id
+
+# Relationships: music_playlist_tracks -> music_playlists
+- type: pg_create_object_relationship
+  args:
+    table: music_playlist_tracks
+    name: playlist
+    using:
+      foreign_key_constraint_on: playlist_id
+
+# Relationships: music_playlist_tracks -> music_tracks
+- type: pg_create_object_relationship
+  args:
+    table: music_playlist_tracks
+    name: track
+    using:
+      foreign_key_constraint_on: track_id
+
+# Relationships: music_subscriptions -> music_artists
+- type: pg_create_object_relationship
+  args:
+    table: music_subscriptions
+    name: artist
+    using:
+      foreign_key_constraint_on: artist_id
+
+# Relationships: music_progress -> music_tracks
+- type: pg_create_object_relationship
+  args:
+    table: music_progress
+    name: track
+    using:
+      foreign_key_constraint_on: track_id
+
+# ============================================================
+# PERMISSIONS: music_artists (family-scoped read)
+# ============================================================
+- type: pg_create_select_permission
+  args:
+    table: music_artists
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: music_artists
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - family_id
+        - name
+        - sort_name
+        - musicbrainz_id
+        - biography
+        - artwork_url
+        - genres
+        - tags
+        - metadata
+
+- type: pg_create_update_permission
+  args:
+    table: music_artists
+    role: user
+    permission:
+      columns:
+        - name
+        - sort_name
+        - biography
+        - artwork_url
+        - genres
+        - tags
+        - metadata
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: music_artists
+    role: user
+    permission:
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# ============================================================
+# PERMISSIONS: music_albums (family-scoped read)
+# ============================================================
+- type: pg_create_select_permission
+  args:
+    table: music_albums
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: music_albums
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - family_id
+        - artist_id
+        - title
+        - year
+        - genre
+        - album_type
+        - track_count
+        - duration_seconds
+        - musicbrainz_id
+        - cover_url
+        - thumbnail_url
+        - release_date
+        - metadata
+
+- type: pg_create_update_permission
+  args:
+    table: music_albums
+    role: user
+    permission:
+      columns:
+        - title
+        - year
+        - genre
+        - album_type
+        - track_count
+        - duration_seconds
+        - cover_url
+        - thumbnail_url
+        - release_date
+        - metadata
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: music_albums
+    role: user
+    permission:
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# ============================================================
+# PERMISSIONS: music_tracks (via album family scope)
+# ============================================================
+- type: pg_create_select_permission
+  args:
+    table: music_tracks
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        album:
+          family_id:
+            _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: music_tracks
+    role: user
+    permission:
+      check:
+        album:
+          family_id:
+            _eq: X-Hasura-Family-Id
+      columns:
+        - album_id
+        - artist_id
+        - title
+        - track_number
+        - disc_number
+        - duration_seconds
+        - file_url
+        - musicbrainz_id
+        - lyrics
+        - metadata
+
+- type: pg_create_update_permission
+  args:
+    table: music_tracks
+    role: user
+    permission:
+      columns:
+        - title
+        - track_number
+        - disc_number
+        - duration_seconds
+        - file_url
+        - lyrics
+        - metadata
+      filter:
+        album:
+          family_id:
+            _eq: X-Hasura-Family-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: music_tracks
+    role: user
+    permission:
+      filter:
+        album:
+          family_id:
+            _eq: X-Hasura-Family-Id
+
+# ============================================================
+# PERMISSIONS: music_playlists (user-owned)
+# ============================================================
+- type: pg_create_select_permission
+  args:
+    table: music_playlists
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        _or:
+          - user_id:
+              _eq: X-Hasura-User-Id
+          - is_public:
+              _eq: true
+
+- type: pg_create_insert_permission
+  args:
+    table: music_playlists
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
+      columns:
+        - family_id
+        - name
+        - description
+        - cover_url
+        - is_public
+
+- type: pg_create_update_permission
+  args:
+    table: music_playlists
+    role: user
+    permission:
+      columns:
+        - name
+        - description
+        - cover_url
+        - is_public
+        - track_count
+        - total_duration_seconds
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: music_playlists
+    role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+# ============================================================
+# PERMISSIONS: music_playlist_tracks
+# ============================================================
+- type: pg_create_select_permission
+  args:
+    table: music_playlist_tracks
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        playlist:
+          _or:
+            - user_id:
+                _eq: X-Hasura-User-Id
+            - is_public:
+                _eq: true
+
+- type: pg_create_insert_permission
+  args:
+    table: music_playlist_tracks
+    role: user
+    permission:
+      check:
+        playlist:
+          user_id:
+            _eq: X-Hasura-User-Id
+      columns:
+        - playlist_id
+        - track_id
+        - position
+
+- type: pg_create_update_permission
+  args:
+    table: music_playlist_tracks
+    role: user
+    permission:
+      columns:
+        - position
+      filter:
+        playlist:
+          user_id:
+            _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: music_playlist_tracks
+    role: user
+    permission:
+      filter:
+        playlist:
+          user_id:
+            _eq: X-Hasura-User-Id
+
+# ============================================================
+# PERMISSIONS: music_progress (user-owned)
+# ============================================================
+- type: pg_create_select_permission
+  args:
+    table: music_progress
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: music_progress
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
+      columns:
+        - track_id
+        - position_seconds
+        - play_count
+
+- type: pg_create_update_permission
+  args:
+    table: music_progress
+    role: user
+    permission:
+      columns:
+        - position_seconds
+        - play_count
+        - last_played_at
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+# ============================================================
+# PERMISSIONS: music_subscriptions (user-owned)
+# ============================================================
+- type: pg_create_select_permission
+  args:
+    table: music_subscriptions
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: music_subscriptions
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
+      columns:
+        - artist_id
+        - auto_download
+        - notify_new_releases
+
+- type: pg_create_update_permission
+  args:
+    table: music_subscriptions
+    role: user
+    permission:
+      columns:
+        - auto_download
+        - notify_new_releases
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: music_subscriptions
+    role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id

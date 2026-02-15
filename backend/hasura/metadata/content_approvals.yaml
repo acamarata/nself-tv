@@ -1,0 +1,201 @@
+- table:
+    schema: public
+    name: content_approval_requests
+  object_relationships:
+    - name: family
+      using:
+        foreign_key_constraint_on: family_id
+    - name: profile
+      using:
+        foreign_key_constraint_on: profile_id
+    - name: media_item
+      using:
+        foreign_key_constraint_on: media_item_id
+    - name: reviewer
+      using:
+        foreign_key_constraint_on: reviewed_by
+  insert_permissions:
+    - role: user
+      permission:
+        check:
+          _and:
+            - family_id: { _eq: X-Hasura-Family-Id }
+            - profile_id: { _eq: X-Hasura-Profile-Id }
+        columns:
+          - family_id
+          - profile_id
+          - media_item_id
+          - request_message
+  select_permissions:
+    - role: user
+      permission:
+        columns:
+          - id
+          - family_id
+          - profile_id
+          - media_item_id
+          - requested_at
+          - request_message
+          - status
+          - reviewed_by
+          - reviewed_at
+          - review_message
+          - auto_approved
+          - auto_approval_rule
+          - created_at
+          - updated_at
+        filter:
+          family_id: { _eq: X-Hasura-Family-Id }
+  update_permissions:
+    - role: user
+      permission:
+        columns:
+          - status
+          - reviewed_by
+          - review_message
+        filter:
+          _and:
+            - family_id: { _eq: X-Hasura-Family-Id }
+            - _or:
+              # Can update own requests
+              - profile_id: { _eq: X-Hasura-Profile-Id }
+              # Or if parent role
+              - family:
+                  members:
+                    _and:
+                      - user_id: { _eq: X-Hasura-User-Id }
+                      - role: { _in: [owner, admin] }
+        check:
+          family_id: { _eq: X-Hasura-Family-Id }
+  delete_permissions:
+    - role: user
+      permission:
+        filter:
+          _and:
+            - family_id: { _eq: X-Hasura-Family-Id }
+            - profile_id: { _eq: X-Hasura-Profile-Id }
+            - status: { _eq: pending }
+
+- table:
+    schema: public
+    name: content_approval_auto_rules
+  object_relationships:
+    - name: family
+      using:
+        foreign_key_constraint_on: family_id
+  insert_permissions:
+    - role: user
+      permission:
+        check:
+          _and:
+            - family_id: { _eq: X-Hasura-Family-Id }
+            - family:
+                members:
+                  _and:
+                    - user_id: { _eq: X-Hasura-User-Id }
+                    - role: { _in: [owner, admin] }
+        columns:
+          - family_id
+          - rule_name
+          - rule_type
+          - rule_config
+          - enabled
+          - priority
+  select_permissions:
+    - role: user
+      permission:
+        columns:
+          - id
+          - family_id
+          - rule_name
+          - rule_type
+          - rule_config
+          - enabled
+          - priority
+          - created_at
+          - updated_at
+        filter:
+          family_id: { _eq: X-Hasura-Family-Id }
+  update_permissions:
+    - role: user
+      permission:
+        columns:
+          - rule_name
+          - rule_type
+          - rule_config
+          - enabled
+          - priority
+        filter:
+          _and:
+            - family_id: { _eq: X-Hasura-Family-Id }
+            - family:
+                members:
+                  _and:
+                    - user_id: { _eq: X-Hasura-User-Id }
+                    - role: { _in: [owner, admin] }
+        check:
+          family_id: { _eq: X-Hasura-Family-Id }
+  delete_permissions:
+    - role: user
+      permission:
+        filter:
+          _and:
+            - family_id: { _eq: X-Hasura-Family-Id }
+            - family:
+                members:
+                  _and:
+                    - user_id: { _eq: X-Hasura-User-Id }
+                    - role: { _in: [owner, admin] }
+
+# Views
+- table:
+    schema: public
+    name: pending_approval_requests
+  select_permissions:
+    - role: user
+      permission:
+        columns:
+          - id
+          - family_id
+          - profile_id
+          - media_item_id
+          - requested_at
+          - request_message
+          - status
+          - requester_name
+          - requester_avatar
+          - requester_rating_limit
+          - media_title
+          - media_type
+          - media_rating
+          - media_poster
+          - media_overview
+        filter:
+          family_id: { _eq: X-Hasura-Family-Id }
+
+- table:
+    schema: public
+    name: approval_history
+  select_permissions:
+    - role: user
+      permission:
+        columns:
+          - id
+          - family_id
+          - profile_id
+          - media_item_id
+          - requested_at
+          - request_message
+          - status
+          - reviewed_by
+          - reviewed_at
+          - review_message
+          - auto_approved
+          - auto_approval_rule
+          - requester_name
+          - reviewer_name
+          - media_title
+          - media_type
+          - media_rating
+        filter:
+          family_id: { _eq: X-Hasura-Family-Id }

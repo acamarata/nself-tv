@@ -1,0 +1,16 @@
+{
+  "id": "org.nself.tv",
+  "version": "0.9.0",
+  "vendor": "ɳSelf",
+  "type": "web",
+  "main": "index.html",
+  "title": "ɳSelf TV",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "requiredPermissions": [
+    "internet",
+    "network.session",
+    "tv.channel",
+    "tv.model"
+  ]
+}

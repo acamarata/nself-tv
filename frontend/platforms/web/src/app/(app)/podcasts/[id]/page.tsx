@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useShowDetail, useSubscribe, useUnsubscribe, useUserSubscriptions } from '../../../../hooks/usePodcasts';
+import { useShowDetail, useSubscribe, useUnsubscribe, useUserSubscriptions } from '@/hooks/usePodcasts';
 import { usePodcastPlayer, Episode } from '../../../../stores/podcast-player';
 import { formatTime, formatRelativeTime } from '../../../../utils/format';
 

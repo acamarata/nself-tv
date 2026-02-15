@@ -1,8 +1,10 @@
 'use client';
 
-import { createContext, useMemo } from 'react';
+import { createContext, useMemo, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { FeatureFlags } from '@/types/config';
+import { getEnvironmentConfig } from '@/lib/config/environment';
+import { getServerFeatureFlags } from '@/lib/config/server-config';
 
 const DEFAULT_FLAGS: FeatureFlags = {
   vod: true,
@@ -19,12 +21,38 @@ export const FeatureFlagContext = createContext<FeatureFlags>(DEFAULT_FLAGS);
 
 export function FeatureFlagProvider({
   children,
-  flags,
+  flags: initialFlags,
 }: {
   children: ReactNode;
   flags?: FeatureFlags | null;
 }) {
-  const value = useMemo(() => flags || DEFAULT_FLAGS, [flags]);
+  const envConfig = getEnvironmentConfig();
+  const [flags, setFlags] = useState<FeatureFlags>(
+    initialFlags || envConfig.defaultFeatures,
+  );
+
+  useEffect(() => {
+    // Fetch server-controlled feature flags on mount
+    let isMounted = true;
+
+    getServerFeatureFlags()
+      .then((serverFlags) => {
+        if (isMounted) {
+          setFlags(serverFlags);
+        }
+      })
+      .catch((error) => {
+        console.warn('Failed to fetch server feature flags:', error);
+        // Keep using default/initial flags
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const value = useMemo(() => flags, [flags]);
+
   return (
     <FeatureFlagContext.Provider value={value}>
       {children}

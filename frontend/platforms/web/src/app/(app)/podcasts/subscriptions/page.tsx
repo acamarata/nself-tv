@@ -5,7 +5,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useUserSubscriptions, useUnsubscribe, useUpdateSubscription } from '../../../../hooks/usePodcasts';
+import { useUserSubscriptions, useUnsubscribe, useUpdateSubscription } from '@/hooks/usePodcasts';
 import Link from 'next/link';
 
 export default function SubscriptionsPage() {
@@ -97,7 +97,7 @@ ${subscriptions.map((sub: any) => `    <outline text="${sub.podcast_show.title}"
 
       {subscriptions.length === 0 ? (
         <div className="text-center text-gray-400 py-12">
-          <p className="mb-4">You're not subscribed to any podcasts yet</p>
+          <p className="mb-4">You&apos;re not subscribed to any podcasts yet</p>
           <Link
             href="/podcasts"
             className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

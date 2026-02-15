@@ -19,6 +19,37 @@ Define the complete architecture for a modular game emulation platform integrate
 
 ## Emulator Tier System
 
+### TV-Only Tiers (No External Hardware)
+
+These tiers represent what is **realistically reliable** running emulators directly on TV platforms (typically via RetroArch, plus platform constraints).
+
+| Tier | Device | Emulator Coverage |
+| --- | --- | --- |
+| 1 | Most TVs | PS1 and below (NES, SNES, Genesis, Atari) |
+| 1+ | High-end Android TVs | PS1 full + N64 (most titles playable) |
+| 1.5 | NVIDIA Shield | PS1 + N64 + Dreamcast + PSP + light PS2 |
+
+**Notes:**
+- **Tier 1** is the "baseline TV reality." Most TVs cannot sustain PS2-class workloads reliably.
+- **Tier 1+** is typically limited to higher-end Android/Google TV sets; still not a PS2 promise.
+- **Tier 1.5** is specifically the **NVIDIA Shield** (a set-top box, but treated as "TV-like" due to TV-centric Android environment).
+
+### STB/Mini-PC Tiers (Custom Linux Bundle)
+
+These tiers represent what is realistically achievable with an x86_64 mini-PC running a dedicated emulation OS (Batocera-like) with optimized emulator stack.
+
+| Tier | Price | Model | Emulator Coverage |
+| --- | --- | --- | --- |
+| 1 | ~$50 | Intel NUC N3700 | PS1 and below (NES, SNES, Genesis, Atari) |
+| 2 | ~$200 | ACEMAGIC K1 (Ryzen 3 4300U) | Adds PS2 (most titles playable) |
+| 3 | ~$300 | Beelink SER5 (Ryzen 7 6800H) | Adds PS2 full library + GameCube/Wii + light PS3 |
+| 4 | ~$400 | GMKtec NucBox K8 Plus (Ryzen 7 8845HS) | Adds PS3 (most titles playable) |
+| 5 | ~$650 | MINISFORUM AtomMan G7 PT | Adds strong PS3 coverage + experimental PS4 |
+
+**Notes:**
+- "Most titles playable" ≠ "100% full library" for PS2/PS3; emulation remains game-dependent.
+- Tier 5 PS4 is explicitly **experimental** (emulator maturity is the limiting factor, not just hardware).
+
 ### Tier 1 — Lightweight (all platforms)
 
 Runs on any device including phones and low-end Android TVs.
@@ -54,14 +85,32 @@ Requires x86-64 CPU with strong single-thread performance.
 | PS2 | PCSX2 / AetherSX2 fork | ~20-40 MB | 1-2 GB | title-dependent, per-game tweaks |
 | Wii | Dolphin | included with GC | 1-2 GB | similar to GC demands |
 
-### Not Feasible (documented for user expectations)
+### Tier 4 — High-End (mini-PC with strong CPU/GPU)
+
+Requires high-end x86-64 mini-PC with excellent single-thread performance and modern GPU.
+
+| System | Recommended Emulator | RAM Needed | Notes |
+| --- | --- | --- | --- |
+| PS3 | RPCS3 | 4-8 GB | Most titles playable with proper settings |
+| GameCube/Wii | Dolphin | 2-4 GB | Full library at 2-3x resolution |
+
+### Tier 5 — Experimental (top-tier mini-PC)
+
+Requires top-tier x86-64 mini-PC with discrete GPU or high-end iGPU.
+
+| System | Recommended Emulator | RAM Needed | Notes |
+| --- | --- | --- | --- |
+| PS3 | RPCS3 | 8-16 GB | Strong PS3 coverage, most titles full speed |
+| PS4 | Experimental emulators | 16+ GB | **EXPERIMENTAL** - select titles only |
+| Xbox 360 | Xenia | 8-16 GB | **EXPERIMENTAL** - very limited compatibility |
+
+### Not Supported
 
 | System | Why | Alternative |
 | --- | --- | --- |
-| PS3 | RPCS3 requires high-end x86 desktop CPU/GPU | Tier 3 hardware + experimental, select titles only |
-| Xbox 360 | Xenia requires desktop-class hardware | same as PS3 |
-| PS4 | no practical emulation exists | not supported |
 | Xbox One | no practical emulation exists | not supported |
+| PS5 | no practical emulation exists | not supported |
+| Xbox Series | no practical emulation exists | not supported |
 
 ## Modular Emulator Packaging
 

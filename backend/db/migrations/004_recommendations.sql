@@ -260,7 +260,7 @@ CREATE OR REPLACE VIEW popular_content AS
 SELECT
   mi.id,
   mi.title,
-  mi.content_type,
+  mi.type,
   mi.poster_url,
   COUNT(DISTINCT ui.user_id) AS unique_viewers,
   COUNT(*) FILTER (WHERE ui.interaction_type = 'complete') AS completion_count,
@@ -269,7 +269,7 @@ FROM media_items mi
 JOIN user_interactions ui ON mi.id = ui.media_item_id
 LEFT JOIN user_ratings ur ON mi.id = ur.media_item_id
 WHERE ui.created_at >= NOW() - INTERVAL '30 days'
-GROUP BY mi.id, mi.title, mi.content_type, mi.poster_url
+GROUP BY mi.id, mi.title, mi.type, mi.poster_url
 ORDER BY unique_viewers DESC, completion_count DESC;
 
 -- Recommendations with Media Details
@@ -277,7 +277,7 @@ CREATE OR REPLACE VIEW user_recommendations_detailed AS
 SELECT
   cr.*,
   mi.title,
-  mi.content_type,
+  mi.type,
   mi.poster_url,
   mi.backdrop_url,
   mi.genres,

@@ -1,0 +1,27 @@
+##   Channel Details
+title=ɳSelf TV
+major_version=0
+minor_version=9
+build_version=0
+
+##   Channel Assets
+mm_icon_focus_hd=pkg:/images/icon_hd.png
+mm_icon_side_hd=pkg:/images/icon_side_hd.png
+splash_screen_hd=pkg:/images/splash_hd.png
+
+##   Application Attributes
+requires_audiometadata=1
+ui_resolutions=fhd
+
+##   Screensaver
+screensaver_title=ɳSelf TV
+
+##   Localization
+bs_libs_required=roku_ads_lib
+
+## TODO: Full Roku implementation needed
+## - BrightScript/SceneGraph UI components
+## - Task nodes for API calls
+## - Video player with adaptive streaming
+## - EPG grid component
+## - Search integration

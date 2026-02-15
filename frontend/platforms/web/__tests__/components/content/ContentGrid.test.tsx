@@ -15,12 +15,11 @@ const mockItems: MediaItem[] = [
     backdropUrl: null,
     genres: ['Action'],
     contentRating: 'PG-13',
-    runtime: 120,
-    voteAverage: 8.0,
+    runtimeMinutes: 120,
+    communityRating: 8.0,
     voteCount: 50,
     status: 'released',
-    createdAt: '2026-01-01',
-    updatedAt: '2026-01-01',
+    addedAt: '2026-01-01',
   },
 ];
 

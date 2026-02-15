@@ -1,0 +1,246 @@
+---
+# Hasura metadata for live TV and DVR (migration 006)
+# Tables: channels, programs, live_events, dvr_recordings, commercial_markers, device_telemetry, user_favorite_teams
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: channels
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: programs
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: live_events
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: dvr_recordings
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: commercial_markers
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: device_telemetry
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: user_favorite_teams
+
+# Relationships - programs
+- type: pg_create_object_relationship
+  args:
+    table: programs
+    name: channel
+    using:
+      foreign_key_constraint_on: channel_id
+
+- type: pg_create_array_relationship
+  args:
+    table: channels
+    name: programs
+    using:
+      foreign_key_constraint_on:
+        table: programs
+        column: channel_id
+
+# Relationships - live_events
+- type: pg_create_object_relationship
+  args:
+    table: live_events
+    name: channel
+    using:
+      foreign_key_constraint_on: channel_id
+
+- type: pg_create_array_relationship
+  args:
+    table: channels
+    name: live_events
+    using:
+      foreign_key_constraint_on:
+        table: live_events
+        column: channel_id
+
+# Relationships - dvr_recordings
+- type: pg_create_object_relationship
+  args:
+    table: dvr_recordings
+    name: event
+    using:
+      foreign_key_constraint_on: event_id
+
+- type: pg_create_array_relationship
+  args:
+    table: live_events
+    name: recordings
+    using:
+      foreign_key_constraint_on:
+        table: dvr_recordings
+        column: event_id
+
+# Relationships - commercial_markers
+- type: pg_create_object_relationship
+  args:
+    table: commercial_markers
+    name: recording
+    using:
+      foreign_key_constraint_on: recording_id
+
+- type: pg_create_array_relationship
+  args:
+    table: dvr_recordings
+    name: commercial_markers
+    using:
+      foreign_key_constraint_on:
+        table: commercial_markers
+        column: recording_id
+
+# Permissions - channels (all users can view channels)
+- type: pg_create_select_permission
+  args:
+    table: channels
+    role: user
+    permission:
+      columns: '*'
+      filter: {}
+
+# Permissions - programs (all users can view EPG)
+- type: pg_create_select_permission
+  args:
+    table: programs
+    role: user
+    permission:
+      columns: '*'
+      filter: {}
+
+# Permissions - live_events (all users can view live events)
+- type: pg_create_select_permission
+  args:
+    table: live_events
+    role: user
+    permission:
+      columns: '*'
+      filter: {}
+
+# Permissions - dvr_recordings (users can manage recordings in their family)
+- type: pg_create_select_permission
+  args:
+    table: dvr_recordings
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: dvr_recordings
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - event_id
+        - family_id
+        - title
+        - channel_name
+        - start_time
+        - end_time
+
+- type: pg_create_update_permission
+  args:
+    table: dvr_recordings
+    role: user
+    permission:
+      columns:
+        - status
+        - end_time
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: dvr_recordings
+    role: user
+    permission:
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# Permissions - commercial_markers (users can view markers for family recordings)
+- type: pg_create_select_permission
+  args:
+    table: commercial_markers
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        recording:
+          family_id:
+            _eq: X-Hasura-Family-Id
+
+# Permissions - device_telemetry (all users can view device health)
+- type: pg_create_select_permission
+  args:
+    table: device_telemetry
+    role: user
+    permission:
+      columns: '*'
+      filter: {}
+
+# Permissions - user_favorite_teams (users manage their own favorite teams)
+- type: pg_create_select_permission
+  args:
+    table: user_favorite_teams
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: user_favorite_teams
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - team_id
+        - league
+        - auto_record
+
+- type: pg_create_update_permission
+  args:
+    table: user_favorite_teams
+    role: user
+    permission:
+      columns:
+        - auto_record
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: user_favorite_teams
+    role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id

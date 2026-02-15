@@ -1,6 +1,18 @@
+export type DeploymentMode = 'standalone' | 'monorepo';
+
+export interface EnvironmentConfig {
+  /** Override backend URL (skips discovery) */
+  backendUrl: string | null;
+  /** Deployment mode: standalone (own backend) or monorepo (shared backend) */
+  mode: DeploymentMode;
+  /** Build-time feature flag defaults */
+  defaultFeatures: FeatureFlags;
+}
+
 export interface ServerConfig {
   name: string;
   version: string;
+  mode: DeploymentMode;
   branding: ServerBranding;
   features: FeatureFlags;
   endpoints: ServerEndpoints;

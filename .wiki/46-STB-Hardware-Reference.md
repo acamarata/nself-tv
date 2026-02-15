@@ -8,9 +8,11 @@ Provide concrete hardware recommendations for nTV OS set-top box deployments, or
 
 | Tier | Name | Target Use | Emulation Ceiling | Approx. Price |
 | --- | --- | --- | --- | --- |
-| 1 | Retro + Media | media streaming + retro games (NES-PS1) | Tier 1 + light Tier 2 | $150-350 |
+| 1 | Retro + Media | media streaming + retro games (NES-PS1) | Tier 1 | $50-350 |
 | 2 | Sweet Spot | all media + games through PS2/GC/Wii | Tier 1 + Tier 2 + Tier 3 | $400-600 |
-| 3 | Power | everything including experimental PS3/360 | all tiers + experimental | $600-900 |
+| 3 | Power | everything including light PS3 | Tier 1-3 + light PS3 | $600-900 |
+| 4 | High-End | strong PS3 support | Tier 1-4 + most PS3 | $400-500 |
+| 5 | Experimental | PS3 full + experimental PS4 | All + experimental | $650+ |
 
 ---
 
@@ -129,6 +131,117 @@ AMD Ryzen 9 with discrete GPU or high-end APU configurations.
 - The dGPU models (HX99G) provide significantly better emulation performance
 - Higher power draw and noise may not be ideal for all living room setups
 - 2 TB NVMe recommended if hosting large PS2/GC/Wii ROM libraries
+
+---
+
+## Tier 4 — "High-End PS3"
+
+### Target Hardware Class
+
+AMD Ryzen 7/9 8000 series with enhanced GPU or similar high-performance x86_64 mini-PCs.
+
+### Reference Models
+
+| Model | CPU | RAM | Storage | GPU | Bluetooth | Approx. Price |
+| --- | --- | --- | --- | --- | --- | --- |
+| GMKtec NucBox K8 Plus | Ryzen 7 8845HS (8C/16T) | 32 GB DDR5 | 1 TB NVMe | Radeon 780M | BT 5.2 | ~$400 |
+| Beelink GTR7 | Ryzen 7 7840HS | 32 GB DDR5 | 1 TB NVMe | Radeon 780M | BT 5.2 | ~$450 |
+
+### Capability Matrix
+
+| Feature | Rating | Notes |
+| --- | --- | --- |
+| All Tier 1-3 | excellent | flawless performance |
+| PS3 (RPCS3) | good | Most titles playable with proper settings |
+| GameCube/PS2/Wii | excellent | 3x+ resolution on most titles |
+| Power draw | 35-65W | moderate power requirements |
+| Noise | low-moderate | active cooling under load |
+
+### Notes
+
+- Ideal for users who want reliable PS3 emulation without top-tier pricing
+- Similar hardware to Tier 3 but marketed for PS3 focus
+- 1 TB storage recommended for PS3 game library
+
+---
+
+## Tier 5 — "Experimental" (PS3 Full + PS4)
+
+### Target Hardware Class
+
+High-end AMD Ryzen with discrete GPU or top-tier integrated graphics.
+
+### Reference Models
+
+| Model | CPU | RAM | Storage | GPU | Bluetooth | Approx. Price |
+| --- | --- | --- | --- | --- | --- | --- |
+| MINISFORUM AtomMan G7 PT | AMD Ryzen 9 7940HS | 32-64 GB DDR5 | 2 TB NVMe | Radeon RX 7600M XT (dGPU) | BT 5.2 | ~$650 |
+| Minisforum HX99G | Ryzen 9 6900HX | 32 GB DDR5 | 1 TB NVMe | Radeon RX 6600M (dGPU) | BT 5.2 | ~$750 |
+
+### Capability Matrix
+
+| Feature | Rating | Notes |
+| --- | --- | --- |
+| All Tier 1-4 | excellent | flawless |
+| PS3 (RPCS3) | excellent | Strong coverage, most titles full speed |
+| PS4 (experimental) | poor-fair | **EXPERIMENTAL** - select titles only |
+| Xbox 360 (Xenia) | poor | **EXPERIMENTAL** - very limited |
+| Power draw | 65-150W | high power requirements |
+| Noise | moderate-high | active cooling required |
+
+### Notes
+
+- **Experimental tier** - PS4 emulation is explicitly experimental
+- Only for enthusiasts who understand emulation limitations
+- Discrete GPU provides significant advantage for demanding emulation
+- 2 TB storage recommended for large libraries
+- Not recommended for casual users
+
+---
+
+## ARM STB — "Retro Edition" (Raspberry Pi)
+
+For non-smart TVs and low-cost deployments, Raspberry Pi provides a dedicated nTV appliance experience.
+
+### Supported Models
+
+| Model | Tier | RAM | Emulation Capability | Approx. Price |
+| --- | --- | --- | --- | --- |
+| Raspberry Pi 4 | 1 | 4-8 GB | PS1 and below (NES, SNES, Genesis, GB/GBA, PS1) reliably | ~$55-75 (board only) |
+| Raspberry Pi 5 | 1+ to 1.5 | 8 GB | PS1 + some N64/PSP/Dreamcast improvements | ~$80 (board only) |
+
+### Complete Kit Requirements
+
+| Component | Requirement | Notes |
+| --- | --- | --- |
+| Power Supply | Official Pi PSU (Pi 4: 3A, Pi 5: 5A/27W) | Essential for stability |
+| Storage | USB SSD boot (128-512 GB) | SD cards NOT recommended (failure-prone) |
+| Cooling | Pi 4: Heatsink, Pi 5: Active fan | Prevents thermal throttling |
+| Case | Ventilated case with cooling | Necessary for reliability |
+| HDMI Cable | Micro HDMI to HDMI | Pi uses micro-HDMI ports |
+
+**Complete Kit Price:** ~$120-150 (Pi board + PSU + SSD + cooling + case)
+
+### Capability Matrix
+
+| Feature | Pi 4 | Pi 5 | Notes |
+| --- | --- | --- | --- |
+| 4K video decode | good | excellent | Hardware decode for media streaming |
+| NES/SNES/Genesis/GB/GBA | excellent | excellent | Full speed, no issues |
+| PS1 | good | excellent | Full compatibility |
+| N64 | fair | good | Pi 5 improved, still game-dependent |
+| PSP | poor | fair | Pi 5 can handle lighter titles |
+| Dreamcast | poor | fair | Pi 5 improved but limited |
+| PS2/GameCube | not supported | not supported | No Tier 2+ on ARM |
+
+### ARM STB Notes
+
+- **Product positioning:** "STB Retro Edition" for non-smart TVs
+- **USB SSD boot strongly recommended** - SD cards fail frequently
+- **Proper cooling essential** - Pi 5 throttles without active cooling
+- **No PS2 promises** - ARM cannot reliably emulate PS2
+- **Media streaming excellent** - Full nTV media experience works perfectly
+- **Low power consumption** - 5-15W typical, ideal for 24/7 operation
 
 ---
 

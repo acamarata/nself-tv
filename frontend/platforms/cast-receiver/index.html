@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ɳSelf TV Cast Receiver</title>
+  <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    #splash {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      z-index: 100;
+      transition: opacity 0.5s;
+    }
+
+    #splash.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #splash-logo {
+      font-size: 72px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    #splash-text {
+      font-size: 24px;
+      opacity: 0.8;
+    }
+
+    #media-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #video-player {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #metadata-overlay {
+      position: absolute;
+      bottom: 100px;
+      left: 60px;
+      max-width: 600px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #metadata-overlay.visible {
+      opacity: 1;
+    }
+
+    #media-title {
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+
+    #media-subtitle {
+      font-size: 24px;
+      opacity: 0.9;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+
+    #progress-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    #progress-fill {
+      height: 100%;
+      background: #667eea;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    #loading-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      border: 8px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    #loading-spinner.visible {
+      display: block;
+    }
+
+    @keyframes spin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Splash Screen -->
+  <div id="splash">
+    <div id="splash-logo">ɳSelf TV</div>
+    <div id="splash-text">Ready to Cast</div>
+  </div>
+
+  <!-- Media Container -->
+  <div id="media-container">
+    <video id="video-player"></video>
+
+    <!-- Metadata Overlay -->
+    <div id="metadata-overlay">
+      <div id="media-title"></div>
+      <div id="media-subtitle"></div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div id="progress-bar">
+      <div id="progress-fill"></div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner"></div>
+  </div>
+
+  <script>
+    const context = cast.framework.CastReceiverContext.getInstance();
+    const playerManager = context.getPlayerManager();
+
+    // Configure receiver options
+    const options = new cast.framework.CastReceiverOptions();
+
+    // Custom playback config
+    options.playbackConfig = new cast.framework.PlaybackConfig();
+    options.playbackConfig.autoResumeDuration = 5;
+    options.playbackConfig.autoPauseDuration = 5;
+
+    // Enable all supported media types
+    options.supportedMediaCommands = cast.framework.messages.Command.ALL_BASIC_MEDIA;
+
+    // UI elements
+    const splash = document.getElementById('splash');
+    const metadataOverlay = document.getElementById('metadata-overlay');
+    const mediaTitle = document.getElementById('media-title');
+    const mediaSubtitle = document.getElementById('media-subtitle');
+    const progressFill = document.getElementById('progress-fill');
+    const loadingSpinner = document.getElementById('loading-spinner');
+
+    let metadataTimeout = null;
+
+    // Show metadata overlay temporarily
+    function showMetadata(duration = 5000) {
+      clearTimeout(metadataTimeout);
+      metadataOverlay.classList.add('visible');
+
+      metadataTimeout = setTimeout(() => {
+        metadataOverlay.classList.remove('visible');
+      }, duration);
+    }
+
+    // Update progress bar
+    function updateProgress() {
+      const currentTime = playerManager.getCurrentTimeSec();
+      const duration = playerManager.getDurationSec();
+
+      if (duration > 0) {
+        const percentage = (currentTime / duration) * 100;
+        progressFill.style.width = `${percentage}%`;
+      }
+    }
+
+    // Player event listeners
+    playerManager.addEventListener(
+      cast.framework.events.EventType.MEDIA_STATUS,
+      (event) => {
+        const mediaStatus = event.mediaStatus;
+
+        if (!mediaStatus || !mediaStatus.media) return;
+
+        // Hide splash screen when media loads
+        splash.classList.add('hidden');
+
+        // Update metadata
+        const metadata = mediaStatus.media.metadata;
+        if (metadata) {
+          mediaTitle.textContent = metadata.title || '';
+          mediaSubtitle.textContent = metadata.subtitle || metadata.artist || '';
+          showMetadata();
+        }
+
+        // Update loading state
+        if (mediaStatus.playerState === cast.framework.messages.PlayerState.BUFFERING) {
+          loadingSpinner.classList.add('visible');
+        } else {
+          loadingSpinner.classList.remove('visible');
+        }
+      }
+    );
+
+    playerManager.addEventListener(
+      cast.framework.events.EventType.PLAYING,
+      () => {
+        loadingSpinner.classList.remove('visible');
+        showMetadata(3000);
+      }
+    );
+
+    playerManager.addEventListener(
+      cast.framework.events.EventType.PAUSE,
+      () => {
+        showMetadata();
+      }
+    );
+
+    // Update progress periodically
+    setInterval(updateProgress, 1000);
+
+    // Intercept LOAD requests to add custom handling
+    playerManager.setMessageInterceptor(
+      cast.framework.messages.MessageType.LOAD,
+      (loadRequestData) => {
+        // Add subtitle tracks if available
+        if (loadRequestData.media.tracks) {
+          loadRequestData.activeTrackIds = loadRequestData.media.tracks
+            .filter(t => t.type === cast.framework.messages.TrackType.TEXT)
+            .map(t => t.trackId);
+        }
+
+        return loadRequestData;
+      }
+    );
+
+    // Custom command handling
+    playerManager.setMessageInterceptor(
+      cast.framework.messages.MessageType.SEEK,
+      (seekRequestData) => {
+        showMetadata(3000);
+        return seekRequestData;
+      }
+    );
+
+    // Log all events for debugging
+    context.addEventListener(
+      cast.framework.system.EventType.ERROR,
+      (event) => {
+        console.error('Receiver error:', event);
+      }
+    );
+
+    context.addEventListener(
+      cast.framework.system.EventType.READY,
+      () => {
+        console.log('Cast receiver ready');
+      }
+    );
+
+    // Start the receiver
+    context.start(options);
+
+    console.log('ɳSelf TV Cast Receiver initialized');
+  </script>
+</body>
+</html>

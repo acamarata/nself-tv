@@ -140,6 +140,11 @@ CREATE TABLE IF NOT EXISTS media_items (
   -- Ratings
   community_rating DECIMAL(3,1),
   vote_count INT DEFAULT 0,
+  user_rating DECIMAL(3,1),
+  user_rating_count INT DEFAULT 0,
+
+  -- Duration (synced with runtime_minutes via trigger in 008)
+  duration_seconds INT,
 
   -- Cast/Crew (stored as JSONB for flexibility)
   credits JSONB DEFAULT '[]',

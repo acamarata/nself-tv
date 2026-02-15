@@ -158,14 +158,14 @@ CREATE OR REPLACE VIEW top_rated_content AS
 SELECT
   mi.id,
   mi.title,
-  mi.content_type,
+  mi.type,
   mi.poster_url,
   AVG(ur.rating)::DECIMAL(3,1) AS average_rating,
   COUNT(ur.id) AS rating_count,
   COUNT(ur.review) AS review_count
 FROM media_items mi
 JOIN user_ratings ur ON mi.id = ur.media_item_id
-GROUP BY mi.id, mi.title, mi.content_type, mi.poster_url
+GROUP BY mi.id, mi.title, mi.type, mi.poster_url
 HAVING COUNT(ur.id) >= 5 -- Minimum 5 ratings to appear in top rated
 ORDER BY AVG(ur.rating) DESC, COUNT(ur.id) DESC;
 
@@ -176,7 +176,7 @@ SELECT
   u.display_name AS user_name,
   u.avatar_url AS user_avatar,
   mi.title AS media_title,
-  mi.content_type,
+  mi.type,
   mi.poster_url
 FROM user_ratings ur
 JOIN users u ON ur.user_id = u.id
@@ -190,7 +190,7 @@ SELECT
   ur.*,
   u.display_name AS user_name,
   mi.title AS media_title,
-  mi.content_type,
+  mi.type,
   CASE
     WHEN (ur.helpful_count + ur.not_helpful_count) > 0
     THEN (ur.helpful_count::DECIMAL / (ur.helpful_count + ur.not_helpful_count)) * 100

@@ -1,0 +1,150 @@
+---
+# Hasura metadata for content acquisition (migration 007)
+# Tables: acquisition_preferences, acquisition_history, acquisition_notifications
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: acquisition_preferences
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: acquisition_history
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: acquisition_notifications
+
+# Relationships - acquisition_preferences
+- type: pg_create_object_relationship
+  args:
+    table: acquisition_preferences
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+# Relationships - acquisition_history
+- type: pg_create_object_relationship
+  args:
+    table: acquisition_history
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+- type: pg_create_object_relationship
+  args:
+    table: acquisition_history
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+# Relationships - acquisition_notifications
+- type: pg_create_object_relationship
+  args:
+    table: acquisition_notifications
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+# Permissions - acquisition_preferences (family members can view/edit family settings)
+- type: pg_create_select_permission
+  args:
+    table: acquisition_preferences
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: acquisition_preferences
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - default_quality_profile
+        - auto_download_enabled
+        - max_concurrent_downloads
+        - preferred_subtitle_languages
+        - vpn_required
+        - seed_ratio_target
+        - bandwidth_schedule_enabled
+
+- type: pg_create_update_permission
+  args:
+    table: acquisition_preferences
+    role: user
+    permission:
+      columns:
+        - default_quality_profile
+        - auto_download_enabled
+        - max_concurrent_downloads
+        - preferred_subtitle_languages
+        - vpn_required
+        - seed_ratio_target
+        - bandwidth_schedule_enabled
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# Permissions - acquisition_history (family members can view family acquisition history)
+- type: pg_create_select_permission
+  args:
+    table: acquisition_history
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# Permissions - acquisition_notifications (users manage their own notification preferences)
+- type: pg_create_select_permission
+  args:
+    table: acquisition_notifications
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: acquisition_notifications
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - event_type
+        - enabled
+        - notify_method
+
+- type: pg_create_update_permission
+  args:
+    table: acquisition_notifications
+    role: user
+    permission:
+      columns:
+        - enabled
+        - notify_method
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: acquisition_notifications
+    role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id

@@ -51,12 +51,14 @@ export default function PlaybackSettingsPage() {
   const [saveMessage, setSaveMessage] = useState('');
 
   useEffect(() => {
-    if (currentProfile?.preferences) {
-      const prefs = currentProfile.preferences;
-      setSubtitleLanguage(prefs.subtitleLanguage ?? 'off');
-      setAudioLanguage(prefs.audioLanguage ?? 'en');
-      setQualityCap(prefs.qualityCap ?? 'auto');
-      setAutoplayNext(prefs.autoplayNextEpisode ?? true);
+    if (currentProfile) {
+      setSubtitleLanguage(currentProfile.subtitleLanguage ?? 'off');
+      setAudioLanguage(currentProfile.audioLanguage ?? 'en');
+      setAutoplayNext(currentProfile.autoplayNext);
+      if (currentProfile.preferences) {
+        const prefs = currentProfile.preferences;
+        if (typeof prefs.qualityCap === 'string') setQualityCap(prefs.qualityCap);
+      }
     }
   }, [currentProfile]);
 
@@ -65,12 +67,12 @@ export default function PlaybackSettingsPage() {
     setSaveMessage('');
     try {
       await updateProfile({
+        subtitleLanguage,
+        audioLanguage,
+        autoplayNext: autoplayNextEpisode,
         preferences: {
           ...currentProfile?.preferences,
-          subtitleLanguage,
-          audioLanguage,
           qualityCap,
-          autoplayNextEpisode,
         },
       });
       setSaveMessage('Playback settings saved.');

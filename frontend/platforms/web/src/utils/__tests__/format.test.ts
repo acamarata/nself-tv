@@ -48,12 +48,12 @@ describe('formatRelativeTime', () => {
   const now = new Date('2024-01-01T12:00:00Z');
 
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(now);
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('should format recent times', () => {

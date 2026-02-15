@@ -8,6 +8,7 @@ module.exports = {
         extensions: ['.ios.ts', '.android.ts', '.ts', '.ios.tsx', '.android.tsx', '.tsx', '.jsx', '.js', '.json'],
         alias: {
           '@ntv/shared': '../../packages/shared/src',
+          '@apollo/client': './src/shims/apollo-client',
         },
       },
     ],

@@ -1,5 +1,11 @@
 ---
-# Hasura metadata for games tables (P8-T04)
+# Hasura metadata for games tables (P8-T04 + 011_game_catalog)
+
+# Track game_catalog table
+- type: pg_track_table
+  args:
+    schema: public
+    name: game_catalog
 
 # Track game_systems table
 - type: pg_track_table
@@ -38,6 +44,42 @@
     name: game_system
     using:
       foreign_key_constraint_on: system_id
+
+# Relationships: game_roms -> game_save_states (array)
+- type: pg_create_array_relationship
+  args:
+    table: game_roms
+    name: game_save_states
+    using:
+      foreign_key_constraint_on:
+        table: game_save_states
+        column: rom_id
+
+# Relationships: game_roms -> game_play_sessions (array)
+- type: pg_create_array_relationship
+  args:
+    table: game_roms
+    name: game_play_sessions
+    using:
+      foreign_key_constraint_on:
+        table: game_play_sessions
+        column: rom_id
+
+# Relationships: game_play_sessions -> game_roms
+- type: pg_create_object_relationship
+  args:
+    table: game_play_sessions
+    name: game_rom
+    using:
+      foreign_key_constraint_on: rom_id
+
+# Relationships: game_play_sessions -> users
+- type: pg_create_object_relationship
+  args:
+    table: game_play_sessions
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
 
 # Relationships: game_save_states -> game_roms
 - type: pg_create_object_relationship
@@ -94,6 +136,8 @@
       check:
         user_id:
           _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
       columns:
         - rom_id
         - slot
@@ -142,6 +186,8 @@
       check:
         user_id:
           _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
       columns:
         - rom_id
         - started_at
@@ -157,3 +203,102 @@
       filter:
         user_id:
           _eq: X-Hasura-User-Id
+
+# ============================================================
+# GAME CATALOG (011_game_catalog)
+# ============================================================
+
+# Relationships: game_catalog -> game_systems
+- type: pg_create_object_relationship
+  args:
+    table: game_catalog
+    name: game_system
+    using:
+      foreign_key_constraint_on: system_id
+
+# Relationships: game_systems -> game_catalog (array)
+- type: pg_create_array_relationship
+  args:
+    table: game_systems
+    name: catalog_entries
+    using:
+      foreign_key_constraint_on:
+        table: game_catalog
+        column: system_id
+
+# Relationships: game_roms -> game_catalog
+- type: pg_create_object_relationship
+  args:
+    table: game_roms
+    name: catalog_entry
+    using:
+      foreign_key_constraint_on: catalog_id
+
+# Permissions: game_catalog (all users can view the catalog)
+- type: pg_create_select_permission
+  args:
+    table: game_catalog
+    role: user
+    permission:
+      columns: '*'
+      filter: {}
+
+# Permissions: game_roms insert (users can add ROMs to their family)
+- type: pg_create_insert_permission
+  args:
+    table: game_roms
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - family_id
+        - system_id
+        - catalog_id
+        - title
+        - cover_url
+        - year
+        - genre
+        - publisher
+        - developer
+        - players
+        - description
+        - region
+        - file_path
+        - file_size
+        - file_hash
+        - popularity_score
+        - screenshot_urls
+        - content_rating
+        - metadata
+        - min_tier
+        - recommended_tier
+        - download_status
+
+# Permissions: game_roms update
+- type: pg_create_update_permission
+  args:
+    table: game_roms
+    role: user
+    permission:
+      columns:
+        - pinned
+        - download_status
+        - file_path
+        - file_size
+        - file_hash
+        - metadata
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# Permissions: game_roms delete
+- type: pg_create_delete_permission
+  args:
+    table: game_roms
+    role: user
+    permission:
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id

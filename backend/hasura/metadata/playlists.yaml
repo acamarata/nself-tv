@@ -1,0 +1,176 @@
+---
+# Hasura metadata for playlists (migration 002)
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: playlists
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: playlist_items
+
+# Relationships - playlists
+- type: pg_create_object_relationship
+  args:
+    table: playlists
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+- type: pg_create_object_relationship
+  args:
+    table: playlists
+    name: owner
+    using:
+      foreign_key_constraint_on: owner_id
+
+- type: pg_create_array_relationship
+  args:
+    table: playlists
+    name: items
+    using:
+      foreign_key_constraint_on:
+        table: playlist_items
+        column: playlist_id
+
+# Relationships - playlist_items
+- type: pg_create_object_relationship
+  args:
+    table: playlist_items
+    name: playlist
+    using:
+      foreign_key_constraint_on: playlist_id
+
+- type: pg_create_object_relationship
+  args:
+    table: playlist_items
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+- type: pg_create_object_relationship
+  args:
+    table: playlist_items
+    name: added_by_user
+    using:
+      foreign_key_constraint_on: added_by
+
+# Permissions - playlists
+- type: pg_create_select_permission
+  args:
+    table: playlists
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        _or:
+          - owner_id:
+              _eq: X-Hasura-User-Id
+          - is_public:
+              _eq: true
+          - family_id:
+              _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: playlists
+    role: user
+    permission:
+      check:
+        _and:
+          - owner_id:
+              _eq: X-Hasura-User-Id
+          - family_id:
+              _eq: X-Hasura-Family-Id
+      set:
+        owner_id: X-Hasura-User-Id
+      columns:
+        - family_id
+        - name
+        - description
+        - is_public
+        - shared_with_users
+        - is_smart
+        - smart_rules
+
+- type: pg_create_update_permission
+  args:
+    table: playlists
+    role: user
+    permission:
+      columns:
+        - name
+        - description
+        - is_public
+        - shared_with_users
+        - is_smart
+        - smart_rules
+      filter:
+        owner_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: playlists
+    role: user
+    permission:
+      filter:
+        owner_id:
+          _eq: X-Hasura-User-Id
+
+# Permissions - playlist_items
+- type: pg_create_select_permission
+  args:
+    table: playlist_items
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        playlist:
+          _or:
+            - owner_id:
+                _eq: X-Hasura-User-Id
+            - is_public:
+                _eq: true
+            - family_id:
+                _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: playlist_items
+    role: user
+    permission:
+      check:
+        playlist:
+          owner_id:
+            _eq: X-Hasura-User-Id
+      columns:
+        - playlist_id
+        - media_item_id
+        - position
+        - notes
+
+- type: pg_create_update_permission
+  args:
+    table: playlist_items
+    role: user
+    permission:
+      columns:
+        - position
+        - notes
+      filter:
+        playlist:
+          owner_id:
+            _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: playlist_items
+    role: user
+    permission:
+      filter:
+        playlist:
+          owner_id:
+            _eq: X-Hasura-User-Id

@@ -78,9 +78,7 @@ export function usePlaybackSession(mediaId: string, contentRating?: string) {
 
     const deviceId = getDeviceId();
     const userRole = user.defaultRole || 'user';
-    const profileRatingLimit = currentProfile?.parentalControls?.maxTvRating ||
-                                 currentProfile?.parentalControls?.maxMovieRating ||
-                                 'TV-MA';
+    const profileRatingLimit = currentProfile?.contentRatingLimit || 'TV-MA';
 
     setIsLoading(true);
     setError(null);

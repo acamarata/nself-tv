@@ -12,11 +12,15 @@ function mapProfile(raw: Record<string, unknown>): Profile {
   return {
     id: raw.id as string,
     userId: raw.user_id as string,
-    displayName: raw.display_name as string,
+    familyId: (raw.family_id as string) || '',
+    displayName: (raw.name as string) || '',
     avatarUrl: (raw.avatar_url as string) || null,
-    role: raw.role as Profile['role'],
-    parentalControls: raw.parental_controls as Profile['parentalControls'],
-    preferences: raw.preferences as Profile['preferences'],
+    contentRatingLimit: (raw.content_rating_limit as string) || null,
+    language: (raw.language as string) || null,
+    subtitleLanguage: (raw.subtitle_language as string) || null,
+    audioLanguage: (raw.audio_language as string) || null,
+    autoplayNext: (raw.autoplay_next as boolean) ?? true,
+    preferences: (raw.preferences as Record<string, unknown>) || null,
     isDefault: raw.is_default as boolean,
     createdAt: raw.created_at as string,
   };
@@ -70,21 +74,12 @@ export function useProfiles() {
       variables: {
         input: {
           user_id: user?.id,
-          display_name: input.displayName,
+          name: input.displayName,
           avatar_url: input.avatarUrl || null,
-          role: input.role,
-          parental_controls: input.parentalControls || {
-            maxTvRating: 'TV-MA',
-            maxMovieRating: 'NC-17',
-            pinEnabled: false,
-            pin: null,
-          },
-          preferences: {
-            subtitleLanguage: 'en',
-            audioLanguage: 'en',
-            qualityCap: '1080p',
-            autoplayNextEpisode: true,
-          },
+          content_rating_limit: input.contentRatingLimit || null,
+          language: input.language || 'en',
+          subtitle_language: input.subtitleLanguage || 'en',
+          audio_language: input.audioLanguage || 'en',
         },
       },
     });
@@ -97,9 +92,13 @@ export function useProfiles() {
     const input = typeof idOrInput === 'string' ? maybeInput! : idOrInput;
     if (!id) throw new Error('No profile selected');
     const setInput: Record<string, unknown> = {};
-    if (input.displayName !== undefined) setInput.display_name = input.displayName;
+    if (input.displayName !== undefined) setInput.name = input.displayName;
     if (input.avatarUrl !== undefined) setInput.avatar_url = input.avatarUrl;
-    if (input.parentalControls !== undefined) setInput.parental_controls = input.parentalControls;
+    if (input.contentRatingLimit !== undefined) setInput.content_rating_limit = input.contentRatingLimit;
+    if (input.language !== undefined) setInput.language = input.language;
+    if (input.subtitleLanguage !== undefined) setInput.subtitle_language = input.subtitleLanguage;
+    if (input.audioLanguage !== undefined) setInput.audio_language = input.audioLanguage;
+    if (input.autoplayNext !== undefined) setInput.autoplay_next = input.autoplayNext;
     if (input.preferences !== undefined) setInput.preferences = input.preferences;
 
     const result = await updateMutation({ variables: { id, input: setInput } });

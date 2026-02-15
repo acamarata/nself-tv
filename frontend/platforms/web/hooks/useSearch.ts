@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLazyQuery } from '@apollo/client';
+import { mapToMediaItem } from '@/types/content';
 import type { MediaItem, MediaType } from '@/types/content';
 import type { SearchResult } from '@/types/catalog';
 import { SEARCH_CONTENT } from '@/lib/graphql/queries';
@@ -9,27 +10,6 @@ import { SEARCH_CONTENT } from '@/lib/graphql/queries';
 const DEBOUNCE_MS = 300;
 const RECENT_SEARCHES_KEY = 'ntv_recent_searches';
 const MAX_RECENT = 10;
-
-function mapItem(raw: Record<string, unknown>): MediaItem {
-  return {
-    id: raw.id as string,
-    type: raw.type as MediaType,
-    title: raw.title as string,
-    originalTitle: null,
-    year: raw.year as number | null,
-    overview: (raw.overview as string) || null,
-    posterUrl: (raw.poster_url as string) || null,
-    backdropUrl: null,
-    genres: (raw.genres as string[]) || [],
-    contentRating: (raw.content_rating as string) || null,
-    runtime: (raw.runtime as number) || null,
-    voteAverage: (raw.vote_average as number) || null,
-    voteCount: 0,
-    status: 'released',
-    createdAt: '',
-    updatedAt: '',
-  };
-}
 
 export function useSearch() {
   const [query, setQuery] = useState('');
@@ -41,16 +21,20 @@ export function useSearch() {
   const [executeSearch, { loading }] = useLazyQuery(SEARCH_CONTENT, {
     fetchPolicy: 'network-only',
     onCompleted: (data) => {
-      const items: MediaItem[] = (data.search_media || []).map(mapItem);
+      const items: MediaItem[] = (data.media_items || []).map(mapToMediaItem);
       const typeCounts: Record<MediaType, number> = {
         movie: 0,
         tv_show: 0,
         episode: 0,
         podcast: 0,
         game: 0,
+        music: 0,
+        live_event: 0,
       };
       for (const item of items) {
-        typeCounts[item.type]++;
+        if (item.type in typeCounts) {
+          typeCounts[item.type]++;
+        }
       }
       setResults({
         items,

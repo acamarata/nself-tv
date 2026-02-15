@@ -35,21 +35,15 @@ const mockTokens = {
 const mockProfile = {
   id: 'profile-123',
   userId: 'user-123',
+  familyId: 'family-123',
   displayName: 'Test Profile',
   avatarUrl: null,
-  role: 'viewer' as const,
-  parentalControls: {
-    maxTvRating: 'TV-MA' as const,
-    maxMovieRating: 'R' as const,
-    pinEnabled: false,
-    pin: null,
-  },
-  preferences: {
-    subtitleLanguage: 'en',
-    audioLanguage: 'en',
-    qualityCap: '1080p',
-    autoplayNextEpisode: true,
-  },
+  contentRatingLimit: 'TV-MA',
+  language: 'en',
+  subtitleLanguage: 'en',
+  audioLanguage: 'en',
+  autoplayNext: true,
+  preferences: null,
   isDefault: true,
   createdAt: '2024-01-01T00:00:00Z',
 };

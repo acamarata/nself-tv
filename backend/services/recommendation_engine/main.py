@@ -1,0 +1,143 @@
+import os
+import time
+from datetime import datetime
+from typing import Any, Dict
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from pydantic import BaseModel
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="recommendation_engine",
+    description="FastAPI service for nself-tv",
+    version="1.0.0"
+)
+
+def get_cors_origins():
+    """Get CORS origins based on environment."""
+    cors_origin = os.getenv('CORS_ORIGIN')
+    if cors_origin:
+        return cors_origin.split(',')
+
+    env = os.getenv('ENV', 'development')
+    base_domain = os.getenv('BASE_DOMAIN', 'localhost')
+
+    if env == 'production':
+        return [f"https://{base_domain}", f"https://*.{base_domain}"]
+    elif env == 'staging':
+        return [f"https://{base_domain}", f"https://*.{base_domain}", "http://localhost:3000"]
+    else:
+        return ["http://localhost:3000", "http://localhost:3001", f"http://*.local.{base_domain}"]
+
+# CORS middleware with environment-aware origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Trusted host middleware (security)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"]  # Configure appropriately for production
+)
+
+# Pydantic models
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+    timestamp: str
+
+class InfoResponse(BaseModel):
+    service: str
+    environment: str
+    domain: str
+    uptime: float
+
+class EchoRequest(BaseModel):
+    message: str
+    data: Dict[str, Any] = {}
+
+class EchoResponse(BaseModel):
+    received: EchoRequest
+    timestamp: str
+
+# Store start time for uptime calculation
+start_time = time.time()
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint"""
+    return HealthResponse(
+        status="healthy",
+        service="recommendation_engine",
+        timestamp=datetime.utcnow().isoformat()
+    )
+
+@app.get("/", response_model=Dict[str, Any])
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "Hello from recommendation_engine!",
+        "project": "nself-tv",
+        "framework": "FastAPI",
+        "version": "0.104.1"
+    }
+
+@app.get("/api/info", response_model=InfoResponse)
+async def get_info():
+    """Get service information"""
+    return InfoResponse(
+        service="recommendation_engine",
+        environment=os.getenv("ENVIRONMENT", "development"),
+        domain="local.nself.org",
+        uptime=time.time() - start_time
+    )
+
+@app.post("/api/echo", response_model=EchoResponse)
+async def echo_endpoint(request: EchoRequest):
+    """Echo endpoint for testing"""
+    return EchoResponse(
+        received=request,
+        timestamp=datetime.utcnow().isoformat()
+    )
+
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    return HTTPException(
+        status_code=404,
+        detail={
+            "error": "Not Found",
+            "path": str(request.url.path)
+        }
+    )
+
+@app.exception_handler(500)
+async def internal_server_error_handler(request, exc):
+    return HTTPException(
+        status_code=500,
+        detail={
+            "error": "Internal Server Error",
+            "message": "Something went wrong!"
+        }
+    )
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 3000))
+    
+    print(f"🚀 recommendation_engine is starting on port {port}")
+    print(f"📍 Health check: http://localhost:{port}/health")
+    print(f"🌐 API endpoint: http://localhost:{port}/api/info")
+    print(f"💬 Echo endpoint: POST http://localhost:{port}/api/echo")
+    print(f"📖 API docs: http://localhost:{port}/docs")
+    
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=os.getenv("ENVIRONMENT") == "development"
+    )

@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { usePodcastPlayer } from '../../stores/podcast-player';
+import { usePodcastPlayer, type Chapter } from '../../stores/podcast-player';
 import { formatTime } from '../../utils/format';
 
 export function ChapterList() {
@@ -23,7 +23,7 @@ export function ChapterList() {
     <div>
       <h3 className="text-lg font-semibold text-white mb-4">Chapters</h3>
       <div className="space-y-2">
-        {chapters.map((chapter, index) => {
+        {chapters.map((chapter: Chapter, index: number) => {
           const isActive = currentChapter?.start_time === chapter.start_time;
 
           return (

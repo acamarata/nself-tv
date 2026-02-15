@@ -1,10 +1,12 @@
 'use client';
 
 import { useQuery } from '@apollo/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useProfiles } from '@/hooks/useProfiles';
 import { ContentRow } from '@/components/content/ContentRow';
-import { Spinner } from '@/components/ui/Spinner';
-import { isContentAllowed } from '@/utils/ratings';
+import { isRatingWithinLimit } from '@/utils/ratings';
+import { mapToMediaItem } from '@/types/content';
+import type { MediaItem } from '@/types/content';
 import {
   GET_CONTINUE_WATCHING,
   GET_TRENDING,
@@ -12,7 +14,6 @@ import {
   GET_RECOMMENDATIONS,
   GET_GENRE_CONTENT,
 } from '@/lib/graphql/queries';
-import type { MediaItem } from '@/types/content';
 
 const GENRE_ROWS = ['Action', 'Comedy', 'Drama'];
 
@@ -33,17 +34,18 @@ function ContentRowSkeleton() {
 }
 
 export default function HomePage() {
+  const { user } = useAuth();
   const { currentProfile } = useProfiles();
 
   const { data: continueData, loading: continueLoading } = useQuery(
     GET_CONTINUE_WATCHING,
-    { variables: { profileId: currentProfile?.id } },
+    { variables: { userId: user?.id }, skip: !user?.id },
   );
   const { data: trendingData, loading: trendingLoading } = useQuery(GET_TRENDING);
   const { data: recentData, loading: recentLoading } = useQuery(GET_RECENTLY_ADDED);
   const { data: recommendData, loading: recommendLoading } = useQuery(
     GET_RECOMMENDATIONS,
-    { variables: { profileId: currentProfile?.id } },
+    { variables: { userId: user?.id }, skip: !user?.id },
   );
 
   const genreQueries = GENRE_ROWS.map((genre) => {
@@ -56,20 +58,35 @@ export default function HomePage() {
 
   const filterAllowed = (items: MediaItem[] | undefined): MediaItem[] => {
     if (!items) return [];
-    if (!currentProfile?.parentalControls) return items;
-    return items.filter((item) =>
-      isContentAllowed(
-        item.contentRating,
-        currentProfile.parentalControls.maxTvRating,
-        currentProfile.parentalControls.maxMovieRating,
-      ),
-    );
+    const limit = currentProfile?.contentRatingLimit;
+    if (!limit) return items;
+    return items.filter((item) => {
+      if (!item.contentRating) return true;
+      return isRatingWithinLimit(item.contentRating, limit);
+    });
   };
 
-  const continueWatching = filterAllowed(continueData?.continueWatching);
-  const trending = filterAllowed(trendingData?.trending);
-  const recentlyAdded = filterAllowed(recentData?.recentlyAdded);
-  const recommendations = filterAllowed(recommendData?.recommendations);
+  // Extract and map data from GQL responses to typed MediaItems
+  const continueWatching = filterAllowed(
+    continueData?.watch_progress?.map((wp: Record<string, unknown>) =>
+      mapToMediaItem(wp.media_item as Record<string, unknown>)
+    )
+  );
+  const trending = filterAllowed(
+    trendingData?.trending_content?.map((tc: Record<string, unknown>) =>
+      mapToMediaItem(tc.media_item as Record<string, unknown>)
+    )
+  );
+  const recentlyAdded = filterAllowed(
+    recentData?.media_items?.map((item: Record<string, unknown>) =>
+      mapToMediaItem(item)
+    )
+  );
+  const recommendations = filterAllowed(
+    recommendData?.content_recommendations?.map((rec: Record<string, unknown>) =>
+      mapToMediaItem(rec.media_item as Record<string, unknown>)
+    )
+  );
 
   const isLoading =
     continueLoading && trendingLoading && recentLoading && recommendLoading;
@@ -117,7 +134,11 @@ export default function HomePage() {
       )}
 
       {genreQueries.map(({ genre, data, loading }) => {
-        const items = filterAllowed(data?.genreContent);
+        const items = filterAllowed(
+          data?.media_items?.map((item: Record<string, unknown>) =>
+            mapToMediaItem(item)
+          )
+        );
         if (loading) return <ContentRowSkeleton key={genre} />;
         if (!items.length) return null;
         return <ContentRow key={genre} title={genre} items={items} />;

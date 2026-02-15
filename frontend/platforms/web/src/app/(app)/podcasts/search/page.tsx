@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useSearchPodcasts } from '../../../../hooks/usePodcasts';
+import { useSearchPodcasts } from '@/hooks/usePodcasts';
 import Link from 'next/link';
 
 export default function PodcastSearchPage() {
@@ -56,7 +56,7 @@ export default function PodcastSearchPage() {
         </div>
       ) : shows.length === 0 ? (
         <div className="text-center text-gray-400 py-12">
-          <p>No podcasts found for "{query}"</p>
+          <p>No podcasts found for &quot;{query}&quot;</p>
         </div>
       ) : (
         <>

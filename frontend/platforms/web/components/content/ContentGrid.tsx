@@ -48,16 +48,16 @@ function ListItem({ item }: { item: MediaItem }) {
         </h3>
         <div className="flex items-center gap-2 mt-0.5 text-xs text-text-muted">
           {item.year && <span>{item.year}</span>}
-          {item.runtime != null && (
+          {item.runtimeMinutes != null && (
             <>
               <span aria-hidden="true">&middot;</span>
-              <span>{formatRuntime(item.runtime)}</span>
+              <span>{formatRuntime(item.runtimeMinutes)}</span>
             </>
           )}
-          {item.voteAverage != null && item.voteAverage > 0 && (
+          {item.communityRating != null && item.communityRating > 0 && (
             <>
               <span aria-hidden="true">&middot;</span>
-              <span>{item.voteAverage.toFixed(1)}</span>
+              <span>{item.communityRating.toFixed(1)}</span>
             </>
           )}
         </div>

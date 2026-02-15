@@ -5,8 +5,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { usePodcastShows } from '../../../hooks/usePodcasts';
-import { usePodcastPlayer } from '../../../stores/podcast-player';
+import { usePodcastShows } from '@/hooks/usePodcasts';
 import Link from 'next/link';
 
 const CATEGORIES = [
@@ -59,7 +58,24 @@ export default function PodcastsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-4">Podcasts</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold text-white">Podcasts</h1>
+
+          <div className="flex gap-3">
+            <Link
+              href="/podcasts/subscriptions"
+              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              My Subscriptions
+            </Link>
+            <Link
+              href="/podcasts/add"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add Podcast
+            </Link>
+          </div>
+        </div>
 
         {/* Category filter */}
         <div className="flex gap-2 overflow-x-auto pb-4">

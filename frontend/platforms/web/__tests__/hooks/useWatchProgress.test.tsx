@@ -2,12 +2,31 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useWatchProgress } from '@/hooks/useWatchProgress';
 
+// Mock useAuth to provide a user with familyId
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'user-1', familyId: 'family-1', email: 'test@test.com', displayName: 'Test', avatarUrl: null, defaultRole: 'owner', roles: ['owner'], createdAt: '2026-01-01' },
+    tokens: null,
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
+// Mock Apollo to avoid needing a provider — tests focus on localStorage logic
+const mockUpsert = vi.fn().mockResolvedValue({ data: {} });
+vi.mock('@apollo/client', () => ({
+  useQuery: () => ({ data: null, loading: false, error: null }),
+  useMutation: () => [mockUpsert, { loading: false }],
+  gql: (strings: TemplateStringsArray) => strings.join(''),
+}));
+
 describe('useWatchProgress', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
     vi.mocked(localStorage.getItem).mockClear();
     vi.mocked(localStorage.setItem).mockClear();
+    mockUpsert.mockClear();
   });
 
   afterEach(() => {
@@ -124,7 +143,7 @@ describe('useWatchProgress', () => {
       result.current.updatePosition(500, 3600);
     });
 
-    // Clear any prior setItem calls from markAsWatched etc.
+    // Clear any prior setItem calls from initial load
     vi.mocked(localStorage.setItem).mockClear();
 
     // Advance by 15 seconds (SAVE_INTERVAL_MS)
@@ -208,5 +227,25 @@ describe('useWatchProgress', () => {
 
     expect(clearIntervalSpy).toHaveBeenCalled();
     clearIntervalSpy.mockRestore();
+  });
+
+  it('syncs to backend when localStorage has data but server does not', () => {
+    const stored = JSON.stringify({
+      position: 300,
+      duration: 3600,
+      updatedAt: new Date().toISOString(),
+    });
+    vi.mocked(localStorage.getItem).mockReturnValueOnce(stored);
+
+    renderHook(() => useWatchProgress('media-1'));
+
+    expect(mockUpsert).toHaveBeenCalledWith({
+      variables: {
+        family_id: 'family-1',
+        media_item_id: 'media-1',
+        position_seconds: 300,
+        duration_seconds: 3600,
+      },
+    });
   });
 });

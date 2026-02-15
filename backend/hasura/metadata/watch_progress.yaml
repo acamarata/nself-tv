@@ -1,0 +1,88 @@
+---
+# Hasura metadata for watch progress (migration 001)
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: watch_progress
+
+# Relationships
+- type: pg_create_object_relationship
+  args:
+    table: watch_progress
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+- type: pg_create_object_relationship
+  args:
+    table: watch_progress
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+- type: pg_create_object_relationship
+  args:
+    table: watch_progress
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+- type: pg_create_object_relationship
+  args:
+    table: watch_progress
+    name: device
+    using:
+      foreign_key_constraint_on: device_id
+
+# Permissions - users can manage their own watch progress
+- type: pg_create_select_permission
+  args:
+    table: watch_progress
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: watch_progress
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
+      columns:
+        - family_id
+        - media_item_id
+        - position_seconds
+        - duration_seconds
+        - device_id
+
+- type: pg_create_update_permission
+  args:
+    table: watch_progress
+    role: user
+    permission:
+      columns:
+        - position_seconds
+        - duration_seconds
+        - completed
+        - last_watched_at
+        - device_id
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: watch_progress
+    role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id

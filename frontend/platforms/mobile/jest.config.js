@@ -10,6 +10,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     '^@ntv/shared$': '<rootDir>/../../packages/shared/src',
+    '^@apollo/client$': '<rootDir>/src/shims/apollo-client.ts',
   },
   testPathIgnorePatterns: ['/node_modules/', '/ios/', '/android/'],
   collectCoverageFrom: [

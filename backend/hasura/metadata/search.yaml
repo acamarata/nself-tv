@@ -1,0 +1,68 @@
+---
+# Hasura metadata for search analytics (migration 005)
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: search_analytics
+
+# Relationships
+- type: pg_create_object_relationship
+  args:
+    table: search_analytics
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+- type: pg_create_object_relationship
+  args:
+    table: search_analytics
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+- type: pg_create_object_relationship
+  args:
+    table: search_analytics
+    name: profile
+    using:
+      foreign_key_constraint_on: profile_id
+
+- type: pg_create_object_relationship
+  args:
+    table: search_analytics
+    name: clicked_result
+    using:
+      foreign_key_constraint_on: clicked_result_id
+
+# Permissions - family members can view family search analytics
+- type: pg_create_select_permission
+  args:
+    table: search_analytics
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: search_analytics
+    role: user
+    permission:
+      check:
+        _and:
+          - family_id:
+              _eq: X-Hasura-Family-Id
+          - user_id:
+              _eq: X-Hasura-User-Id
+      columns:
+        - family_id
+        - profile_id
+        - query
+        - results_count
+        - filters
+        - clicked_result_id
+        - clicked_position
+        - source

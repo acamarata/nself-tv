@@ -2,52 +2,36 @@
 
 import { useCallback } from 'react';
 import { useQuery, useMutation } from '@apollo/client';
-import type { WatchlistItem, MediaItem, MediaType } from '@/types/content';
-import { GET_WATCHLIST, ADD_TO_WATCHLIST, REMOVE_FROM_WATCHLIST, REORDER_WATCHLIST } from '@/lib/graphql/queries';
-import { useProfiles } from './useProfiles';
+import { mapToMediaItem } from '@/types/content';
+import type { WatchlistItem } from '@/types/content';
+import { GET_WATCHLIST, ADD_TO_WATCHLIST, REMOVE_FROM_WATCHLIST } from '@/lib/graphql/queries';
+import { useAuth } from './useAuth';
 
-function mapItem(raw: Record<string, unknown>): WatchlistItem {
+function mapWatchlistItem(raw: Record<string, unknown>): WatchlistItem {
   const mediaRaw = raw.media_item as Record<string, unknown>;
   return {
     id: raw.id as string,
     mediaItemId: raw.media_item_id as string,
-    profileId: raw.profile_id as string,
-    sortOrder: raw.sort_order as number,
-    addedAt: raw.added_at as string,
-    mediaItem: {
-      id: mediaRaw.id as string,
-      type: mediaRaw.type as MediaType,
-      title: mediaRaw.title as string,
-      originalTitle: null,
-      year: mediaRaw.year as number | null,
-      overview: null,
-      posterUrl: (mediaRaw.poster_url as string) || null,
-      backdropUrl: null,
-      genres: (mediaRaw.genres as string[]) || [],
-      contentRating: (mediaRaw.content_rating as string) || null,
-      runtime: (mediaRaw.runtime as number) || null,
-      voteAverage: (mediaRaw.vote_average as number) || null,
-      voteCount: 0,
-      status: 'released',
-      createdAt: '',
-      updatedAt: '',
-    },
+    userId: '',
+    mediaItem: mapToMediaItem(mediaRaw),
+    position: (raw.position as number) ?? 0,
+    addedAt: (raw.added_at as string) ?? '',
   };
 }
 
 export function useWatchlist() {
-  const { currentProfile } = useProfiles();
+  const { user } = useAuth();
 
   const { data, loading, refetch } = useQuery(GET_WATCHLIST, {
-    variables: { profileId: currentProfile?.id },
-    skip: !currentProfile?.id,
+    variables: { userId: user?.id },
+    skip: !user?.id,
   });
 
   const [addMutation] = useMutation(ADD_TO_WATCHLIST);
   const [removeMutation] = useMutation(REMOVE_FROM_WATCHLIST);
-  const [reorderMutation] = useMutation(REORDER_WATCHLIST);
 
-  const items: WatchlistItem[] = (data?.watchlist_items || []).map(mapItem);
+  const playlistId = data?.playlists?.[0]?.id;
+  const items: WatchlistItem[] = (data?.playlists?.[0]?.items || []).map(mapWatchlistItem);
 
   const isInWatchlist = useCallback((mediaItemId: string) => {
     return items.some((i) => i.mediaItemId === mediaItemId);
@@ -58,22 +42,12 @@ export function useWatchlist() {
   }, [items]);
 
   const add = useCallback(async (mediaItemId: string) => {
-    if (!currentProfile) return;
+    if (!playlistId) return;
     await addMutation({
-      variables: { profileId: currentProfile.id, mediaItemId },
-      optimisticResponse: {
-        insert_watchlist_items_one: {
-          __typename: 'watchlist_items',
-          id: `temp-${Date.now()}`,
-          media_item_id: mediaItemId,
-          profile_id: currentProfile.id,
-          sort_order: items.length,
-          added_at: new Date().toISOString(),
-        },
-      },
+      variables: { playlistId, mediaItemId },
     });
     await refetch();
-  }, [currentProfile, addMutation, refetch, items.length]);
+  }, [playlistId, addMutation, refetch]);
 
   const remove = useCallback(async (mediaItemId: string) => {
     const item = getWatchlistItem(mediaItemId);
@@ -90,15 +64,6 @@ export function useWatchlist() {
     }
   }, [isInWatchlist, add, remove]);
 
-  const reorder = useCallback(async (orderedIds: string[]) => {
-    const updates = orderedIds.map((id, index) => ({
-      where: { id: { _eq: id } },
-      _set: { sort_order: index },
-    }));
-    await reorderMutation({ variables: { updates } });
-    await refetch();
-  }, [reorderMutation, refetch]);
-
   return {
     items,
     isLoading: loading,
@@ -106,6 +71,5 @@ export function useWatchlist() {
     add,
     remove,
     toggle,
-    reorder,
   };
 }

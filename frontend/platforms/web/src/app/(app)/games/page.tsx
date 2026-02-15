@@ -5,7 +5,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useGameSystems, useROMsBySystem } from '../../../hooks/useGames';
+import { useGameSystems, useROMsBySystem, useRecentSessions } from '@/hooks/useGames';
+import { formatRelativeTime, formatTime } from '@/utils/format';
 import Link from 'next/link';
 
 export default function GamesPage() {
@@ -13,9 +14,11 @@ export default function GamesPage() {
 
   const { data: systemsData, loading: systemsLoading } = useGameSystems();
   const { data: romsData, loading: romsLoading } = useROMsBySystem(selectedSystemId);
+  const { data: sessionsData, loading: sessionsLoading } = useRecentSessions(6);
 
   const systems = systemsData?.game_systems || [];
   const roms = romsData?.game_roms || [];
+  const recentSessions = sessionsData?.game_play_sessions || [];
 
   // Group systems by tier
   const tier1Systems = systems.filter((s: any) => s.tier === 1);
@@ -32,7 +35,60 @@ export default function GamesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-white mb-8">Retro Games</h1>
+      {/* Header with Add Game button */}
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-white">Retro Games</h1>
+        <Link
+          href="/games/search"
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+        >
+          Add Game
+        </Link>
+      </div>
+
+      {/* Recently Played */}
+      {!sessionsLoading && recentSessions.length > 0 && (
+        <div className="mb-10">
+          <h2 className="text-xl font-semibold text-white mb-4">Recently Played</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {recentSessions.map((session: any) => (
+              <Link
+                key={session.id}
+                href={`/games/${session.game_rom?.id}`}
+                className="group"
+              >
+                <div className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors">
+                  {session.game_rom?.cover_url ? (
+                    <img
+                      src={session.game_rom.cover_url}
+                      alt={session.game_rom.title}
+                      className="w-full aspect-[3/4] object-cover"
+                    />
+                  ) : (
+                    <div className="w-full aspect-[3/4] bg-gray-700 flex items-center justify-center">
+                      <div className="text-3xl text-gray-500">&#x1F3AE;</div>
+                    </div>
+                  )}
+                  <div className="p-3">
+                    <h3 className="font-semibold text-white text-sm mb-1 line-clamp-1 group-hover:text-blue-400 transition-colors">
+                      {session.game_rom?.title}
+                    </h3>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>{session.game_rom?.game_system?.name?.toUpperCase()}</span>
+                      <span>{formatRelativeTime(session.started_at)}</span>
+                    </div>
+                    {session.duration_seconds != null && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatTime(session.duration_seconds)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* System selection */}
       <div className="mb-8">
@@ -136,7 +192,9 @@ export default function GamesPage() {
                   href={`/games/${rom.id}`}
                   className="group"
                 >
-                  <div className="bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors">
+                  <div className={`bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors relative ${
+                    rom.download_status && rom.download_status !== 'ready' ? 'opacity-75' : ''
+                  }`}>
                     {rom.cover_url ? (
                       <img
                         src={rom.cover_url}
@@ -145,7 +203,22 @@ export default function GamesPage() {
                       />
                     ) : (
                       <div className="w-full aspect-[3/4] bg-gray-700 flex items-center justify-center">
-                        <div className="text-4xl text-gray-500">🎮</div>
+                        <div className="text-4xl text-gray-500">&#x1F3AE;</div>
+                      </div>
+                    )}
+                    {rom.download_status && rom.download_status !== 'ready' && (
+                      <div className="absolute top-2 right-2">
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                          rom.download_status === 'pending' ? 'bg-yellow-600 text-white' :
+                          rom.download_status === 'downloading' ? 'bg-blue-600 text-white' :
+                          rom.download_status === 'error' ? 'bg-red-600 text-white' :
+                          'bg-gray-600 text-white'
+                        }`}>
+                          {rom.download_status === 'pending' ? 'Pending' :
+                           rom.download_status === 'downloading' ? 'Downloading' :
+                           rom.download_status === 'error' ? 'Error' :
+                           rom.download_status}
+                        </span>
                       </div>
                     )}
                     <div className="p-4">

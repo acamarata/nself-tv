@@ -86,6 +86,56 @@
         family_id:
           _eq: X-Hasura-Family-Id
 
+# Permissions: podcast_shows insert (users can add shows to their family)
+- type: pg_create_insert_permission
+  args:
+    table: podcast_shows
+    role: user
+    permission:
+      check:
+        family_id:
+          _eq: X-Hasura-Family-Id
+      columns:
+        - family_id
+        - feed_url
+        - title
+        - author
+        - description
+        - artwork_url
+        - language
+        - explicit
+        - categories
+        - fetch_status
+
+# Permissions: podcast_shows update
+- type: pg_create_update_permission
+  args:
+    table: podcast_shows
+    role: user
+    permission:
+      columns:
+        - title
+        - author
+        - description
+        - artwork_url
+        - language
+        - explicit
+        - categories
+        - fetch_status
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# Permissions: podcast_shows delete
+- type: pg_create_delete_permission
+  args:
+    table: podcast_shows
+    role: user
+    permission:
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
 # Permissions: podcast_episodes (users can view episodes from shows in their family)
 - type: pg_create_select_permission
   args:
@@ -117,6 +167,8 @@
       check:
         user_id:
           _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
       columns:
         - show_id
         - notifications_enabled
@@ -162,6 +214,8 @@
       check:
         user_id:
           _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
       columns:
         - episode_id
         - position

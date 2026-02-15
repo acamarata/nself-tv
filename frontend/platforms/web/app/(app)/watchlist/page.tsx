@@ -7,25 +7,7 @@ import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 
 export default function WatchlistPage() {
-  const { items, isLoading, remove, reorder } = useWatchlist();
-
-  const handleMoveUp = (index: number) => {
-    if (index <= 0) return;
-    const newItems = [...items];
-    const temp = newItems[index];
-    newItems[index] = newItems[index - 1];
-    newItems[index - 1] = temp;
-    reorder(newItems.map((item) => item.id));
-  };
-
-  const handleMoveDown = (index: number) => {
-    if (index >= items.length - 1) return;
-    const newItems = [...items];
-    const temp = newItems[index];
-    newItems[index] = newItems[index + 1];
-    newItems[index + 1] = temp;
-    reorder(newItems.map((item) => item.id));
-  };
+  const { items, isLoading, remove } = useWatchlist();
 
   if (isLoading) {
     return (
@@ -50,51 +32,18 @@ export default function WatchlistPage() {
 
       {items.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {items.map((item, index) => (
+          {items.map((item) => (
             <div key={item.id} className="relative group">
               <Link href={`/${item.mediaItem?.id ?? item.id}`}>
                 <ContentCard item={item.mediaItem ?? item} />
               </Link>
 
-              {/* Overlay Controls */}
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
-                {/* Move Up */}
-                {index > 0 && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleMoveUp(index);
-                    }}
-                    className="w-7 h-7 flex items-center justify-center bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors"
-                    aria-label="Move up"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                  </button>
-                )}
-
-                {/* Move Down */}
-                {index < items.length - 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleMoveDown(index);
-                    }}
-                    className="w-7 h-7 flex items-center justify-center bg-black/70 text-white rounded-full hover:bg-black/90 transition-colors"
-                    aria-label="Move down"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                )}
-
-                {/* Remove */}
+              {/* Remove Button */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={(e) => {
                     e.preventDefault();
-                    remove(item.id);
+                    remove(item.mediaItemId);
                   }}
                   className="w-7 h-7 flex items-center justify-center bg-red-600/80 text-white rounded-full hover:bg-red-600 transition-colors"
                   aria-label="Remove from watchlist"

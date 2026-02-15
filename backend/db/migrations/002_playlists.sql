@@ -149,7 +149,7 @@ SELECT
   p.name AS playlist_name,
   p.owner_id AS playlist_owner_id,
   mi.title AS media_title,
-  mi.content_type,
+  mi.type,
   mi.duration_seconds AS media_duration,
   mi.poster_url,
   u.display_name AS added_by_name

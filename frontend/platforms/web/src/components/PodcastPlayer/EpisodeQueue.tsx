@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { usePodcastPlayer } from '../../stores/podcast-player';
+import { usePodcastPlayer, type Episode } from '../../stores/podcast-player';
 import { formatTime } from '../../utils/format';
 
 export function EpisodeQueue() {
@@ -33,7 +33,7 @@ export function EpisodeQueue() {
       </div>
 
       <div className="space-y-2">
-        {queue.map((episode, index) => (
+        {queue.map((episode: Episode, index: number) => (
           <div
             key={episode.id}
             className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors group"

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import type { MediaItem, CastMember } from '@/types/content';
 import { formatRuntime } from '@/utils/ratings';
 import { Button } from '@/components/ui/Button';
+import { RatingButtons } from './RatingButtons';
 
 interface ContentDetailProps {
   item: MediaItem;
@@ -80,14 +81,14 @@ function ContentDetail({ item, cast }: ContentDetailProps) {
                   {item.contentRating}
                 </span>
               )}
-              {item.runtime != null && (
-                <span>{formatRuntime(item.runtime)}</span>
+              {item.runtimeMinutes != null && (
+                <span>{formatRuntime(item.runtimeMinutes)}</span>
               )}
-              {item.voteAverage != null && item.voteAverage > 0 && (
+              {item.communityRating != null && item.communityRating > 0 && (
                 <span className="flex items-center gap-1">
                   <span className="text-yellow-500">&#9733;</span>
                   <span>
-                    {item.voteAverage.toFixed(1)}
+                    {item.communityRating.toFixed(1)}
                     {item.voteCount != null && (
                       <span className="text-text-muted">
                         {' '}
@@ -128,6 +129,18 @@ function ContentDetail({ item, cast }: ContentDetailProps) {
               </Button>
             </div>
 
+            {/* Rating buttons */}
+            <div className="mt-4">
+              <p className="text-sm text-text-muted mb-2">Rate this</p>
+              <RatingButtons
+                mediaItemId={item.id}
+                initialRating={null}
+                onRatingChange={(rating) => {
+                  console.log('Rating changed:', rating);
+                }}
+              />
+            </div>
+
             {/* Overview */}
             {item.overview && (
               <div className="mt-6">
@@ -150,7 +163,7 @@ function ContentDetail({ item, cast }: ContentDetailProps) {
             </h2>
             <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
               {cast.map((member) => (
-                <CastCard key={member.id} member={member} />
+                <CastCard key={`${member.name}-${member.order}`} member={member} />
               ))}
             </div>
           </div>

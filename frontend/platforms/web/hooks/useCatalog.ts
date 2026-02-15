@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useLazyQuery } from '@apollo/client';
-import type { MediaItem, MediaType } from '@/types/content';
+import { mapToMediaItem } from '@/types/content';
+import type { MediaType } from '@/types/content';
 import type { CatalogFilters, CatalogState, SortOption, ViewMode } from '@/types/catalog';
 import { SORT_OPTIONS } from '@/types/catalog';
 import { GET_CATALOG_ITEMS } from '@/lib/graphql/queries';
@@ -20,7 +21,7 @@ function buildWhereClause(filters: CatalogFilters) {
       ...(filters.yearTo ? { _lte: filters.yearTo } : {}),
     };
   }
-  if (filters.minRating) where.vote_average = { _gte: filters.minRating };
+  if (filters.minRating) where.community_rating = { _gte: filters.minRating };
   if (filters.contentRating) where.content_rating = { _lte: filters.contentRating };
   return where;
 }
@@ -30,32 +31,11 @@ function buildOrderBy(sort: SortOption) {
   switch (sort.field) {
     case 'title': return [{ title: dir }];
     case 'year': return [{ year: dir }];
-    case 'rating': return [{ vote_average: `${dir}_nulls_last` }];
-    case 'added': return [{ created_at: dir }];
+    case 'rating': return [{ community_rating: `${dir}_nulls_last` }];
+    case 'added': return [{ added_at: dir }];
     case 'popularity': return [{ vote_count: dir }];
     default: return [{ title: 'asc' }];
   }
-}
-
-function mapItem(raw: Record<string, unknown>): MediaItem {
-  return {
-    id: raw.id as string,
-    type: raw.type as MediaType,
-    title: raw.title as string,
-    originalTitle: null,
-    year: raw.year as number | null,
-    overview: (raw.overview as string) || null,
-    posterUrl: (raw.poster_url as string) || null,
-    backdropUrl: null,
-    genres: (raw.genres as string[]) || [],
-    contentRating: (raw.content_rating as string) || null,
-    runtime: (raw.runtime as number) || null,
-    voteAverage: (raw.vote_average as number) || null,
-    voteCount: 0,
-    status: 'released',
-    createdAt: raw.created_at as string || '',
-    updatedAt: '',
-  };
 }
 
 export function useCatalog(initialType?: MediaType) {
@@ -74,7 +54,7 @@ export function useCatalog(initialType?: MediaType) {
   const [fetchItems, { loading }] = useLazyQuery(GET_CATALOG_ITEMS, {
     fetchPolicy: 'network-only',
     onCompleted: (data) => {
-      const items = (data.media_items || []).map(mapItem);
+      const items = (data.media_items || []).map(mapToMediaItem);
       const total = data.media_items_aggregate?.aggregate?.count || 0;
       setState((prev) => ({
         ...prev,

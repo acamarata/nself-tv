@@ -53,4 +53,17 @@ export function formatProgress(percentage: number): string {
   return `${Math.round(percentage)}%`;
 }
 
-export { TV_RATING_ORDER, MOVIE_RATING_ORDER };
+/**
+ * Unified rating check for profiles with a single contentRatingLimit field.
+ * Handles both TV and Movie rating systems.
+ */
+const UNIFIED_RATING_ORDER = ['TV-Y', 'TV-Y7', 'G', 'TV-G', 'PG', 'TV-PG', 'PG-13', 'TV-14', 'R', 'TV-MA', 'NC-17'];
+
+export function isRatingWithinLimit(rating: string, limit: string): boolean {
+  const ratingIdx = UNIFIED_RATING_ORDER.indexOf(rating);
+  const limitIdx = UNIFIED_RATING_ORDER.indexOf(limit);
+  if (ratingIdx === -1 || limitIdx === -1) return true;
+  return ratingIdx <= limitIdx;
+}
+
+export { TV_RATING_ORDER, MOVIE_RATING_ORDER, UNIFIED_RATING_ORDER };

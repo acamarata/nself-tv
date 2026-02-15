@@ -14,17 +14,15 @@ const mockItem: MediaItem = {
   backdropUrl: '/backdrop.jpg',
   genres: ['Action', 'Thriller'],
   contentRating: 'PG-13',
-  runtime: 120,
-  voteAverage: 8.5,
+  runtimeMinutes: 120,
+  communityRating: 8.5,
   voteCount: 100,
   status: 'released',
-  createdAt: '2026-01-01',
-  updatedAt: '2026-01-01',
+  addedAt: '2026-01-01',
 };
 
 const mockCast: CastMember[] = [
   {
-    id: 'cast-1',
     name: 'John Actor',
     character: 'Hero',
     profileUrl: '/profile.jpg',

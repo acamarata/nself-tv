@@ -1,4 +1,4 @@
-export type MediaType = 'movie' | 'tv_show' | 'episode' | 'podcast' | 'game';
+export type MediaType = 'movie' | 'tv_show' | 'episode' | 'podcast' | 'game' | 'music' | 'live_event';
 
 export interface MediaItem {
   id: string;
@@ -11,49 +11,24 @@ export interface MediaItem {
   backdropUrl: string | null;
   genres: string[];
   contentRating: string | null;
-  runtime: number | null;
-  voteAverage: number | null;
+  runtimeMinutes: number | null;
+  communityRating: number | null;
   voteCount: number;
   status: string;
-  createdAt: string;
-  updatedAt: string;
+  addedAt: string;
 }
 
-export interface TVShow extends MediaItem {
-  type: 'tv_show';
-  seasonCount: number;
-  episodeCount: number;
-  network: string | null;
-  firstAirDate: string | null;
-  lastAirDate: string | null;
-}
-
-export interface Season {
-  id: string;
-  showId: string;
-  seasonNumber: number;
-  name: string;
-  overview: string | null;
-  posterUrl: string | null;
-  episodeCount: number;
-  airDate: string | null;
-}
-
-export interface Episode {
-  id: string;
-  showId: string;
-  seasonId: string;
+/** All content lives in media_items — episodes use parent_id to reference their show */
+export interface Episode extends MediaItem {
+  type: 'episode';
+  parentId: string;
   seasonNumber: number;
   episodeNumber: number;
-  title: string;
-  overview: string | null;
-  stillUrl: string | null;
-  runtime: number | null;
-  airDate: string | null;
+  thumbnailUrl: string | null;
+  hlsMasterUrl: string | null;
 }
 
 export interface CastMember {
-  id: string;
   name: string;
   character: string;
   profileUrl: string | null;
@@ -62,14 +37,14 @@ export interface CastMember {
 
 export interface WatchProgress {
   mediaItemId: string;
-  profileId: string;
-  position: number;
-  duration: number;
+  userId: string;
+  positionSeconds: number;
+  durationSeconds: number;
   percentage: number;
-  updatedAt: string;
+  lastWatchedAt: string;
 }
 
-export interface ContentRow {
+export interface ContentRowData {
   id: string;
   title: string;
   type: 'continue_watching' | 'recently_added' | 'trending' | 'genre' | 'recommended' | 'popular';
@@ -80,8 +55,32 @@ export interface ContentRow {
 export interface WatchlistItem {
   id: string;
   mediaItemId: string;
-  profileId: string;
+  userId: string;
   mediaItem: MediaItem;
-  sortOrder: number;
+  position: number;
   addedAt: string;
+}
+
+/**
+ * Maps raw GraphQL snake_case data to a camelCase MediaItem.
+ * Use this whenever passing raw GQL results to typed components.
+ */
+export function mapToMediaItem(raw: Record<string, unknown>): MediaItem {
+  return {
+    id: raw.id as string,
+    type: raw.type as MediaType,
+    title: (raw.title as string) ?? '',
+    originalTitle: (raw.original_title as string) ?? null,
+    year: (raw.year as number) ?? null,
+    overview: (raw.overview as string) ?? null,
+    posterUrl: (raw.poster_url as string) ?? null,
+    backdropUrl: (raw.backdrop_url as string) ?? null,
+    genres: (raw.genres as string[]) ?? [],
+    contentRating: (raw.content_rating as string) ?? null,
+    runtimeMinutes: (raw.runtime_minutes as number) ?? null,
+    communityRating: (raw.community_rating as number) ?? null,
+    voteCount: (raw.vote_count as number) ?? 0,
+    status: (raw.status as string) ?? '',
+    addedAt: (raw.added_at as string) ?? (raw.created_at as string) ?? '',
+  };
 }

@@ -1,9 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const { createLogger, requestIdMiddleware } = require('../lib/logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const logger = createLogger('sports');
 
 // Security middleware
 app.use(helmet());
@@ -37,6 +39,9 @@ app.use(cors({
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request ID tracking
+app.use(requestIdMiddleware(logger));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -86,8 +91,9 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
+  const logger = req.logger || createLogger('sports');
+  logger.error('Request failed', { error: err.message, stack: err.stack, path: req.path });
+  res.status(500).json({
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!'
   });
@@ -96,9 +102,9 @@ app.use((err, req, res, next) => {
 // Graceful shutdown
 const gracefulShutdown = (server) => {
   return () => {
-    console.log('🛑 Shutting down gracefully...');
+    logger.info('Shutting down gracefully');
     server.close(() => {
-      console.log('✅ HTTP server closed');
+      logger.info('HTTP server closed');
       process.exit(0);
     });
   };
@@ -106,10 +112,12 @@ const gracefulShutdown = (server) => {
 
 // Start server
 const server = app.listen(PORT, () => {
-  console.log(`🚀 sports is running on port ${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/health`);
-  console.log(`🌐 API endpoint: http://localhost:${PORT}/api/info`);
-  console.log(`💬 Echo endpoint: POST http://localhost:${PORT}/api/echo`);
+  logger.info('Sports service started', {
+    port: PORT,
+    healthCheck: `http://localhost:${PORT}/health`,
+    apiEndpoint: `http://localhost:${PORT}/api/info`,
+    echoEndpoint: `http://localhost:${PORT}/api/echo`
+  });
 });
 
 // Handle shutdown signals

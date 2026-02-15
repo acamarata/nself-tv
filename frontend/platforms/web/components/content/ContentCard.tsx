@@ -71,9 +71,9 @@ function ContentCard({
         )}
 
         {/* Rating badge */}
-        {item.voteAverage != null && item.voteAverage > 0 && (
+        {item.communityRating != null && item.communityRating > 0 && (
           <div className="absolute top-2 left-2 bg-black/70 text-white text-xs font-semibold px-1.5 py-0.5 rounded">
-            {item.voteAverage.toFixed(1)}
+            {item.communityRating.toFixed(1)}
           </div>
         )}
 

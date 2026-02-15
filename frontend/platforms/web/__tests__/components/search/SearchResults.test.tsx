@@ -15,26 +15,27 @@ const mockItem: MediaItem = {
   backdropUrl: null,
   genres: ['Drama'],
   contentRating: 'PG',
-  runtime: 100,
-  voteAverage: 7.5,
+  runtimeMinutes: 100,
+  communityRating: 7.5,
   voteCount: 40,
   status: 'released',
-  createdAt: '2026-01-01',
-  updatedAt: '2026-01-01',
+  addedAt: '2026-01-01',
 };
 
 const mockResults: SearchResult = {
   items: [mockItem],
   totalCount: 1,
+  query: 'test',
   activeType: undefined,
-  typeCounts: { movie: 1, tv_show: 0, episode: 0, podcast: 0, game: 0 },
+  typeCounts: { movie: 1, tv_show: 0, episode: 0, podcast: 0, game: 0, music: 0, live_event: 0 },
 };
 
 const emptyResults: SearchResult = {
   items: [],
   totalCount: 0,
+  query: 'nothing',
   activeType: undefined,
-  typeCounts: { movie: 0, tv_show: 0, episode: 0, podcast: 0, game: 0 },
+  typeCounts: { movie: 0, tv_show: 0, episode: 0, podcast: 0, game: 0, music: 0, live_event: 0 },
 };
 
 describe('SearchResults', () => {

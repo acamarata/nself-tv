@@ -1,0 +1,193 @@
+---
+# Hasura metadata for recommendations (migration 004)
+# Tables: user_interactions, content_recommendations, user_content_preferences, trending_content
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: user_interactions
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: content_recommendations
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: user_content_preferences
+
+- type: pg_track_table
+  args:
+    schema: public
+    name: trending_content
+
+# Relationships - user_interactions
+- type: pg_create_object_relationship
+  args:
+    table: user_interactions
+    name: family
+    using:
+      foreign_key_constraint_on: family_id
+
+- type: pg_create_object_relationship
+  args:
+    table: user_interactions
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+- type: pg_create_object_relationship
+  args:
+    table: user_interactions
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+# Relationships - content_recommendations
+- type: pg_create_object_relationship
+  args:
+    table: content_recommendations
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+- type: pg_create_object_relationship
+  args:
+    table: content_recommendations
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+- type: pg_create_object_relationship
+  args:
+    table: content_recommendations
+    name: reason_media
+    using:
+      foreign_key_constraint_on: reason_media_id
+
+# Relationships - user_content_preferences
+- type: pg_create_object_relationship
+  args:
+    table: user_content_preferences
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+# Relationships - trending_content
+- type: pg_create_object_relationship
+  args:
+    table: trending_content
+    name: media_item
+    using:
+      foreign_key_constraint_on: media_item_id
+
+# Permissions - user_interactions (users can view their own and family interactions for recommendations)
+- type: pg_create_select_permission
+  args:
+    table: user_interactions
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: user_interactions
+    role: user
+    permission:
+      check:
+        _and:
+          - user_id:
+              _eq: X-Hasura-User-Id
+          - family_id:
+              _eq: X-Hasura-Family-Id
+      columns:
+        - family_id
+        - media_item_id
+        - interaction_type
+        - interaction_data
+        - device_type
+        - session_id
+
+# Permissions - content_recommendations (users can view their own recommendations)
+- type: pg_create_select_permission
+  args:
+    table: content_recommendations
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_update_permission
+  args:
+    table: content_recommendations
+    role: user
+    permission:
+      columns:
+        - was_clicked
+        - was_watched
+        - feedback_score
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+# Permissions - user_content_preferences (users can manage their own preferences)
+- type: pg_create_select_permission
+  args:
+    table: user_content_preferences
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: user_content_preferences
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - preferred_genres
+        - disliked_genres
+        - favorite_actors
+        - favorite_directors
+        - preferred_content_types
+        - min_rating
+        - prefer_highly_rated
+        - blocked_media_ids
+
+- type: pg_create_update_permission
+  args:
+    table: user_content_preferences
+    role: user
+    permission:
+      columns:
+        - preferred_genres
+        - disliked_genres
+        - favorite_actors
+        - favorite_directors
+        - preferred_content_types
+        - min_rating
+        - prefer_highly_rated
+        - blocked_media_ids
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+# Permissions - trending_content (all users can view trending)
+- type: pg_create_select_permission
+  args:
+    table: trending_content
+    role: user
+    permission:
+      columns: '*'
+      filter: {}

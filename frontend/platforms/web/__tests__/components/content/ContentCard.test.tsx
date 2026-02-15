@@ -14,12 +14,11 @@ const mockItem: MediaItem = {
   backdropUrl: null,
   genres: ['Action', 'Thriller'],
   contentRating: 'PG-13',
-  runtime: 120,
-  voteAverage: 8.5,
+  runtimeMinutes: 120,
+  communityRating: 8.5,
   voteCount: 100,
   status: 'released',
-  createdAt: '2026-01-01',
-  updatedAt: '2026-01-01',
+  addedAt: '2026-01-01',
 };
 
 describe('ContentCard', () => {

@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>nself-tv</Name>
+  <Repository>ghcr.io/acamarata/nself-tv</Repository>
+  <Registry>https://ghcr.io/</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/acamarata/nself-tv/issues</Support>
+  <Project>https://github.com/acamarata/nself-tv</Project>
+  <Overview>Self-hosted media platform for movies, TV shows, live TV, music, podcasts, and games. 100% FOSS alternative to Plex/Jellyfin with advanced features.</Overview>
+  <Category>MediaApp:Video MediaApp:Music Status:Stable</Category>
+  <WebUI>http://[IP]:[PORT:8080]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/acamarata/nself-tv/main/backend/packages/unraid/nself-tv.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/acamarata/nself-tv/main/docs/logo.png</Icon>
+  <ExtraParams>--health-cmd="curl -f http://localhost:8080/health || exit 1" --health-interval=30s --health-timeout=3s --health-retries=3</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Web UI Port" Target="8080" Default="8080" Mode="tcp" Description="Web interface port" Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Media Directory" Target="/media" Default="/mnt/user/media" Mode="rw" Description="Path to your media files (movies, TV shows, music)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/media</Config>
+  <Config Name="Config Directory" Target="/config" Default="/mnt/user/appdata/nself-tv/config" Mode="rw" Description="Configuration files" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/nself-tv/config</Config>
+  <Config Name="Data Directory" Target="/data" Default="/mnt/user/appdata/nself-tv/data" Mode="rw" Description="Database and application data" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/nself-tv/data</Config>
+  <Config Name="Backups Directory" Target="/backups" Default="/mnt/user/backups/nself-tv" Mode="rw" Description="Database backups" Type="Path" Display="advanced" Required="false" Mask="false">/mnt/user/backups/nself-tv</Config>
+  <Config Name="PostgreSQL Port" Target="5432" Default="5432" Mode="tcp" Description="PostgreSQL database port" Type="Port" Display="advanced" Required="false" Mask="false">5432</Config>
+  <Config Name="Deployment Mode" Target="NTV_MODE" Default="standalone" Mode="" Description="Deployment mode: standalone, monorepo, or nas" Type="Variable" Display="advanced" Required="false" Mask="false">nas</Config>
+  <Config Name="Base Domain" Target="BASE_DOMAIN" Default="ntv.local" Mode="" Description="Base domain for the application" Type="Variable" Display="advanced" Required="false" Mask="false">ntv.local</Config>
+  <Config Name="Enable Live TV" Target="LIVE_TV_ENABLED" Default="false" Mode="" Description="Enable live TV and DVR features" Type="Variable" Display="always" Required="false" Mask="false">false</Config>
+  <Config Name="Enable Games" Target="GAMES_ENABLED" Default="false" Mode="" Description="Enable retro game emulation" Type="Variable" Display="always" Required="false" Mask="false">false</Config>
+  <Config Name="Enable Podcasts" Target="PODCASTS_ENABLED" Default="true" Mode="" Description="Enable podcast features" Type="Variable" Display="always" Required="false" Mask="false">true</Config>
+  <Config Name="Enable Music" Target="MUSIC_ENABLED" Default="true" Mode="" Description="Enable music library and player" Type="Variable" Display="always" Required="false" Mask="false">true</Config>
+  <Config Name="Enable Monitoring" Target="MONITORING_ENABLED" Default="false" Mode="" Description="Enable Prometheus/Grafana monitoring stack" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="Hardware Transcoding" Target="TRANSCODING_HARDWARE" Default="true" Mode="" Description="Enable hardware transcoding (requires compatible GPU)" Type="Variable" Display="always" Required="false" Mask="false">true</Config>
+  <Config Name="Transcoding Backend" Target="TRANSCODING_BACKEND" Default="qsv" Mode="" Description="Hardware transcoding backend: qsv (Intel QuickSync), nvenc (NVIDIA), vaapi (AMD/Intel)" Type="Variable" Display="advanced" Required="false" Mask="false">qsv</Config>
+  <Config Name="Max Transcoding Sessions" Target="TRANSCODING_MAX_SESSIONS" Default="2" Mode="" Description="Maximum concurrent transcoding sessions" Type="Variable" Display="advanced" Required="false" Mask="false">2</Config>
+  <Config Name="Storage Backend" Target="STORAGE_BACKEND" Default="local" Mode="" Description="Storage backend: local or s3" Type="Variable" Display="advanced" Required="false" Mask="false">local</Config>
+  <Config Name="Log Level" Target="LOG_LEVEL" Default="info" Mode="" Description="Logging level: debug, info, warn, error" Type="Variable" Display="advanced" Required="false" Mask="false">info</Config>
+  <Config Name="Backup Schedule" Target="BACKUP_SCHEDULE" Default="0 2 * * *" Mode="" Description="Cron schedule for automatic backups (default: daily at 2 AM)" Type="Variable" Display="advanced" Required="false" Mask="false">0 2 * * *</Config>
+  <Config Name="Backup Retention Days" Target="BACKUP_RETENTION" Default="30" Mode="" Description="Number of days to keep backups" Type="Variable" Display="advanced" Required="false" Mask="false">30</Config>
+  <Config Name="DRI Device" Target="/dev/dri" Default="/dev/dri" Mode="rw" Description="Hardware acceleration device for transcoding" Type="Device" Display="advanced" Required="false" Mask="false">/dev/dri</Config>
+</Container>

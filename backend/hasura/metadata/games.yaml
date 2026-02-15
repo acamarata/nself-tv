@@ -1,0 +1,159 @@
+---
+# Hasura metadata for games tables (P8-T04)
+
+# Track game_systems table
+- type: pg_track_table
+  args:
+    schema: public
+    name: game_systems
+
+# Track game_roms table
+- type: pg_track_table
+  args:
+    schema: public
+    name: game_roms
+
+# Track game_save_states table
+- type: pg_track_table
+  args:
+    schema: public
+    name: game_save_states
+
+# Track game_save_history table
+- type: pg_track_table
+  args:
+    schema: public
+    name: game_save_history
+
+# Track game_play_sessions table
+- type: pg_track_table
+  args:
+    schema: public
+    name: game_play_sessions
+
+# Relationships: game_roms -> game_systems
+- type: pg_create_object_relationship
+  args:
+    table: game_roms
+    name: game_system
+    using:
+      foreign_key_constraint_on: system_id
+
+# Relationships: game_save_states -> game_roms
+- type: pg_create_object_relationship
+  args:
+    table: game_save_states
+    name: game_rom
+    using:
+      foreign_key_constraint_on: rom_id
+
+# Relationships: game_save_states -> users
+- type: pg_create_object_relationship
+  args:
+    table: game_save_states
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+# Permissions: game_systems (all users can view)
+- type: pg_create_select_permission
+  args:
+    table: game_systems
+    role: user
+    permission:
+      columns: '*'
+      filter: {}
+
+# Permissions: game_roms (users can view ROMs in their family)
+- type: pg_create_select_permission
+  args:
+    table: game_roms
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# Permissions: game_save_states (users can manage their own saves)
+- type: pg_create_select_permission
+  args:
+    table: game_save_states
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: game_save_states
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - rom_id
+        - slot
+        - data_path
+        - screenshot_path
+        - hash
+
+- type: pg_create_update_permission
+  args:
+    table: game_save_states
+    role: user
+    permission:
+      columns:
+        - data_path
+        - screenshot_path
+        - hash
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: game_save_states
+    role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+# Permissions: game_play_sessions (users can view their own sessions)
+- type: pg_create_select_permission
+  args:
+    table: game_play_sessions
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: game_play_sessions
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - rom_id
+        - started_at
+
+- type: pg_create_update_permission
+  args:
+    table: game_play_sessions
+    role: user
+    permission:
+      columns:
+        - ended_at
+        - duration_seconds
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id

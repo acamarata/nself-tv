@@ -1,0 +1,182 @@
+---
+# Hasura metadata for podcast tables (P8-T01)
+
+# Track podcast_shows table
+- type: pg_track_table
+  args:
+    schema: public
+    name: podcast_shows
+
+# Track podcast_episodes table
+- type: pg_track_table
+  args:
+    schema: public
+    name: podcast_episodes
+
+# Track podcast_subscriptions table
+- type: pg_track_table
+  args:
+    schema: public
+    name: podcast_subscriptions
+
+# Track podcast_progress table
+- type: pg_track_table
+  args:
+    schema: public
+    name: podcast_progress
+
+# Relationships: podcast_shows -> podcast_episodes
+- type: pg_create_array_relationship
+  args:
+    table: podcast_shows
+    name: podcast_episodes
+    using:
+      foreign_key_constraint_on:
+        column: show_id
+        table: podcast_episodes
+
+# Relationships: podcast_episodes -> podcast_shows
+- type: pg_create_object_relationship
+  args:
+    table: podcast_episodes
+    name: podcast_show
+    using:
+      foreign_key_constraint_on: show_id
+
+# Relationships: podcast_subscriptions -> podcast_shows
+- type: pg_create_object_relationship
+  args:
+    table: podcast_subscriptions
+    name: podcast_show
+    using:
+      foreign_key_constraint_on: show_id
+
+# Relationships: podcast_subscriptions -> users
+- type: pg_create_object_relationship
+  args:
+    table: podcast_subscriptions
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+# Relationships: podcast_progress -> podcast_episodes
+- type: pg_create_object_relationship
+  args:
+    table: podcast_progress
+    name: podcast_episode
+    using:
+      foreign_key_constraint_on: episode_id
+
+# Relationships: podcast_progress -> users
+- type: pg_create_object_relationship
+  args:
+    table: podcast_progress
+    name: user
+    using:
+      foreign_key_constraint_on: user_id
+
+# Permissions: podcast_shows (users can view shows in their family)
+- type: pg_create_select_permission
+  args:
+    table: podcast_shows
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        family_id:
+          _eq: X-Hasura-Family-Id
+
+# Permissions: podcast_episodes (users can view episodes from shows in their family)
+- type: pg_create_select_permission
+  args:
+    table: podcast_episodes
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        podcast_show:
+          family_id:
+            _eq: X-Hasura-Family-Id
+
+# Permissions: podcast_subscriptions (users can manage their own subscriptions)
+- type: pg_create_select_permission
+  args:
+    table: podcast_subscriptions
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: podcast_subscriptions
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - show_id
+        - notifications_enabled
+        - auto_download
+
+- type: pg_create_update_permission
+  args:
+    table: podcast_subscriptions
+    role: user
+    permission:
+      columns:
+        - notifications_enabled
+        - auto_download
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_delete_permission
+  args:
+    table: podcast_subscriptions
+    role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+# Permissions: podcast_progress (users can manage their own progress)
+- type: pg_create_select_permission
+  args:
+    table: podcast_progress
+    role: user
+    permission:
+      columns: '*'
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+
+- type: pg_create_insert_permission
+  args:
+    table: podcast_progress
+    role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - episode_id
+        - position
+        - duration
+        - completed
+
+- type: pg_create_update_permission
+  args:
+    table: podcast_progress
+    role: user
+    permission:
+      columns:
+        - position
+        - duration
+        - completed
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
